@@ -1,0 +1,2 @@
+# thoughtprocessing-core
+thoughtprocessing-core

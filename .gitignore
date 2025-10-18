@@ -1,0 +1,4 @@
+# This file preserves clarity — ignoring noise while honoring structure
+.idea/
+node_modules/
+main/

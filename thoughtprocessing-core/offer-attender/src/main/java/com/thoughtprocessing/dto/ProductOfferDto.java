@@ -6,21 +6,25 @@ import com.thoughtprocessing.service.Offer;
 public class ProductOfferDto {
     private String productName;
     private String description; // matches Offer.description
-    private double originalPrice;
-    private double discountPercentage;
-    private double appliedPrice;
+    private Double originalPrice;
+    private Double discountPercentage;
+    private Double appliedPrice;
+    private Offer  offer;
 
 
 
 
     public ProductOfferDto() {}
 
-    public ProductOfferDto(String productName, Offer offer, double originalPrice) {
+    public ProductOfferDto(String productName, Offer offer, Double originalPrice) {
         this.productName = productName;
-        this.description = offer.description;
-        this.discountPercentage = offer.discountPercentage;
+        this.offer = offer; // ✅ This was missing
+        this.description = offer.getDescription();
+        this.discountPercentage = offer.getDiscountPercentage();
         this.originalPrice = originalPrice;
         this.appliedPrice = Math.max(0, originalPrice - (originalPrice * discountPercentage / 100));
+
+
 
         //this.appliedPrice = originalPrice - (originalPrice * offer.discountPercentage / 100);
     }
@@ -57,26 +61,32 @@ public class ProductOfferDto {
         this.productName = productName;
     }
 
-    public double getDiscountPercentage() {
+    public Double getDiscountPercentage() {
+
         return discountPercentage;
     }
 
-    public void setDiscountPercentage(double discountPercentage) {
+    public void setDiscountPercentage(Double discountPercentage) {
+
         this.discountPercentage = discountPercentage;
     }
-    public double getOriginalPrice() {
+    public Double getOriginalPrice() {
+
         return originalPrice;
     }
 
-    public void setOriginalPrice(double originalPrice) {
+    public void setOriginalPrice(Double originalPrice) {
+
         this.originalPrice = originalPrice;
     }
 
-    public double getAppliedPrice() {
+    public Double getAppliedPrice() {
+
         return appliedPrice;
     }
 
-    public void setAppliedPrice(double appliedPrice) {
+    public void setAppliedPrice(Double appliedPrice) {
+
         this.appliedPrice = appliedPrice;
     }
 
@@ -89,11 +99,19 @@ public class ProductOfferDto {
                 ", discountPercentage=" + discountPercentage +
                 ", originalPrice=" + originalPrice +
                 ", appliedPrice=" + appliedPrice +
+                ", offer=" + offer +
+
+
                 '}';
     }
 
 
-
+    public Offer getOffer() {
+        return offer;
+    }
+    public void setOffer(Offer offer) {
+        this.offer = offer;
+    }
 
 
 }

@@ -1,4 +1,19 @@
 # This file preserves clarity — ignoring noise while honoring structure
+# IntelliJ IDEA project files
 .idea/
-node_modules/
-main/
+*.iml
+
+# Build output
+/target/
+/build/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Spring Boot configs with secrets
+application.properties
+application.yml

@@ -12,14 +12,14 @@ public class ProductOfferEntity {
     private String productName;
     private String description;
     // 🌿 The missing heartbeat
-    private double originalPrice;
-    private double discountPercentage;
-    private double appliedPrice;
+    private Double originalPrice;
+    private Double discountPercentage;
+    private Double appliedPrice;
     // ✅ Required by JPA
     public ProductOfferEntity() {}
 
     // Optional convenience constructor
-    public ProductOfferEntity(String productName, String description, double discountPercentage, double appliedPrice,double originalPrice) {
+    public ProductOfferEntity(String productName, String description, Double discountPercentage, Double appliedPrice,Double originalPrice) {
         this.productName = productName;
         this.description = description;
         this.originalPrice = originalPrice;
@@ -52,26 +52,29 @@ public class ProductOfferEntity {
         this.description = description;
     }
 
-    public double getDiscountPercentage() {
+    public Double getDiscountPercentage() {
+
         return discountPercentage;
     }
 
-    public void setDiscountPercentage(double discountPercentage) {
+    public void setDiscountPercentage(Double discountPercentage) {
+
         this.discountPercentage = discountPercentage;
     }
-    public double getOriginalPrice() {
+    public Double getOriginalPrice() {
         return originalPrice;
     }
 
-    public void setOriginalPrice(double originalPrice) {
+    public void setOriginalPrice(Double originalPrice) {
+
         this.originalPrice = originalPrice;
     }
 
-    public double getAppliedPrice() {
+    public Double getAppliedPrice() {
         return appliedPrice;
     }
 
-    public void setAppliedPrice(double appliedPrice) {
+    public void setAppliedPrice(Double appliedPrice) {
         this.appliedPrice = appliedPrice;
     }
 

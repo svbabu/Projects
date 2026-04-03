@@ -1,9 +1,9 @@
 package com.thoughtprocessing.service;
 
 public class Offer {
-    public String description;
+    private String description;
 
-    public double discountPercentage;
+    private double discountPercentage;
     public Offer(String description, double discountPercentage)
     {
         this.description=description;

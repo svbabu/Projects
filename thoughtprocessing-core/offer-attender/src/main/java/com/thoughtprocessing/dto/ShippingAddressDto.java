@@ -1,12 +1,15 @@
 package com.thoughtprocessing.dto;
 
+import com.thoughtprocessing.model.Order;
+import com.thoughtprocessing.model.ShippingAddressEntity;
+
 import java.time.LocalDate;
 
 /*@Data
 @NoArgsConstructor
 @AllArgsConstructor*/
 
-public class ShippingAddressDto {
+public class ShippingAddressDto  {
 
 
     private Long id;
@@ -21,13 +24,13 @@ public class ShippingAddressDto {
     private String landmark;
     private String addressType;
     private boolean useDefault = false;
-
+    private String orderId; // keep it simple
     public ShippingAddressDto() {
 
     }
     public ShippingAddressDto(String userId,String fullName, String mobileNumber, String pincode,
                               String city, String state, String buildingName, String streetName,
-                              String landmark, String addressType, boolean useDefault) {
+                              String landmark, String addressType, boolean useDefault, String orderId) {
         this.userId = userId;
         this.fullName = fullName;
         this.mobileNumber = mobileNumber;
@@ -39,6 +42,7 @@ public class ShippingAddressDto {
         this.landmark = landmark;
         this.addressType = addressType;
         this.useDefault = useDefault;
+        this.orderId = orderId;
     }
     public String getUserId() {
         return userId;
@@ -133,4 +137,11 @@ public class ShippingAddressDto {
     public Long getId() {
         return id;
     }
+    public String getOrderId() {
+        return orderId;
+    }
+    public void setOrder(String  orderId) {
+        this.orderId = orderId;
+    }
+
 }

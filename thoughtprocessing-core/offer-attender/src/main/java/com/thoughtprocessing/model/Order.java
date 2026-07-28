@@ -1,5 +1,6 @@
 package com.thoughtprocessing.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -15,7 +16,7 @@ public class Order {
     private String orderId;   // primary key
 
     @Column(name = "customer_id")
-    private Long customerId;
+    private String customerId;
 
     @Column(name = "order_status")
     private String orderStatus;
@@ -37,10 +38,22 @@ public class Order {
 
     // One order can have many payments
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Payment> payments;
+    // One order can have many items
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL,
+            orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<OrderItemEntity> items = new ArrayList<>();
+
+    // One order has one shipping address
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "shipping_address_id", referencedColumnName = "id")
+    private ShippingAddressEntity shippingAddress;
 
     public Order() {}
-    public Order(String orderId, Long customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt, Payment payments) {
+    public Order(String orderId, String customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt, List<Payment> payments, List<OrderItemEntity> items,
+                 ShippingAddressEntity shippingAddress) {
         this.orderId = orderId;
         this.customerId = customerId;
         this.orderStatus = orderStatus;
@@ -49,11 +62,19 @@ public class Order {
         this.updatedAt = updatedAt;
         this.attempts = attempts;
         this.receipt = receipt;
-        this.payments = new ArrayList<>();
+        this.payments = (payments != null) ? payments : new ArrayList<>();
+        this.items = (items != null) ? items : new ArrayList<>();
+        this.shippingAddress = shippingAddress;
+
 
 
 
     }
+
+    public Order(String orderId) {
+        this.orderId = orderId;
+    }
+
     public String getOrderId() {
         return orderId;
     }
@@ -62,11 +83,11 @@ public class Order {
         this.orderId = orderId;
     }
 
-    public Long getCustomerId() {
+    public String getCustomerId() {
         return customerId;
     }
 
-    public void setCustomerId(Long customerId) {
+    public void setCustomerId(String customerId) {
         this.customerId = customerId;
     }
 
@@ -134,5 +155,40 @@ public class Order {
         this.payments.remove(payment);
         payment.setOrder(null); // break the link safely
         }
+    // --- Items helpers ---
+    public void addItem(OrderItemEntity item) {
+        this.items.add(item);
+        item.setOrder(this); // maintain bidirectional link
+    }
+
+    /*public void removeItem(OrderItemEntity item) {
+        this.items.remove(item);
+        item.setOrder(null); // break the link safely
+    }*/
+
+    // --- Shipping helpers ---
+  /* public void setShippingAddress(ShippingAddressEntity shippingAddress) {
+        this.shippingAddress = shippingAddress;
+        if (shippingAddress != null) {
+            shippingAddress.setOrder(this); // maintain bidirectional link if you add back-reference
+        }
+    }
+*/
+
+    public List<OrderItemEntity> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItemEntity> items) {
+        this.items = items;
+    }
+
+    public ShippingAddressEntity getShippingAddress() {
+        return shippingAddress;
+    }
+
+    public void setShippingAddress(ShippingAddressEntity shippingAddress) {
+        this.shippingAddress = shippingAddress;
+    }
 }
 

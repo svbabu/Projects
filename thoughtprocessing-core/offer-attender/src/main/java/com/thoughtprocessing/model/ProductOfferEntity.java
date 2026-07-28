@@ -3,29 +3,28 @@ package com.thoughtprocessing.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product_offer")
+@Table(name = "product_offer",uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "offer_id"}))
 public class ProductOfferEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    private String productName;
-    private String description;
-    // 🌿 The missing heartbeat
-    private Double originalPrice;
-    private Double discountPercentage;
+    @Column(name="applied_price")
     private Double appliedPrice;
-    // ✅ Required by JPA
+
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
+    private ProductEntity product;
+
+    @ManyToOne
+    @JoinColumn(name = "offer_id", nullable = false)
+    private OfferEntity offer;
+
     public ProductOfferEntity() {}
 
-    // Optional convenience constructor
-    public ProductOfferEntity(String productName, String description, Double discountPercentage, Double appliedPrice,Double originalPrice) {
-        this.productName = productName;
-        this.description = description;
-        this.originalPrice = originalPrice;
-        this.discountPercentage = discountPercentage;
+    public ProductOfferEntity(ProductEntity product, OfferEntity offer, Double appliedPrice) {
+        this.product = product;
+        this.offer = offer;
         this.appliedPrice = appliedPrice;
-
     }
 
     public Long getId() {
@@ -36,40 +35,6 @@ public class ProductOfferEntity {
         this.id = id;
     }
 
-    public String getProductName() {
-        return productName;
-    }
-
-    public void setProductName(String productName) {
-        this.productName = productName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Double getDiscountPercentage() {
-
-        return discountPercentage;
-    }
-
-    public void setDiscountPercentage(Double discountPercentage) {
-
-        this.discountPercentage = discountPercentage;
-    }
-    public Double getOriginalPrice() {
-        return originalPrice;
-    }
-
-    public void setOriginalPrice(Double originalPrice) {
-
-        this.originalPrice = originalPrice;
-    }
-
     public Double getAppliedPrice() {
         return appliedPrice;
     }
@@ -78,4 +43,20 @@ public class ProductOfferEntity {
         this.appliedPrice = appliedPrice;
     }
 
+    public ProductEntity getProduct() {
+        return product;
+    }
+
+    public void setProduct(ProductEntity product) {
+        this.product = product;
+    }
+
+    public OfferEntity getOffer() {
+        return offer;
+    }
+
+    public void setOffer(OfferEntity offer) {
+        this.offer = offer;
+    }
+// getters and setters
 }

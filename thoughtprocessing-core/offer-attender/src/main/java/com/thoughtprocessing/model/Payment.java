@@ -1,5 +1,6 @@
 package com.thoughtprocessing.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -62,6 +63,7 @@ public class Payment {
     @ManyToOne @JoinColumn(name = "merchant_id")
     private Merchant merchant;
     @ManyToOne @JoinColumn(name = "order_id")
+    @JsonIgnore
     private Order order;               // foreign key to orders table
 
 
@@ -307,6 +309,7 @@ public class Payment {
     public Order getOrder() {
         return order;
     }
+
 
 
 }

@@ -26,7 +26,7 @@ public class ShippingAddressController {
 
 
     @Autowired
-    public ShippingAddressController( ShippingAddressService shippingAddressService ) {
+    public ShippingAddressController( ShippingAddressService shippingAddressService, ShippingAddressRepository shippingAddressRepository ) {
         this.shippingAddressService = shippingAddressService;
         this.shippingAddressRepository = shippingAddressRepository;
     }
@@ -34,7 +34,9 @@ public class ShippingAddressController {
     @PostMapping("/save")
     @ResponseBody
     ResponseEntity saveShippingAddress(@RequestBody ShippingAddressDto dto) {
-        ShippingAddressDto savedDto = shippingAddressService.addShippingAddress(dto);
+        /*ShippingAddressDto savedDto = shippingAddressService.addShippingAddress(dto);*/
+
+        ShippingAddressDto savedDto = shippingAddressService.addShippingAddressDto(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedDto);
     }
 
@@ -48,13 +50,44 @@ public class ShippingAddressController {
     }
     @GetMapping("/default/{userId}")
     public ResponseEntity<ShippingAddressEntity> getDefaultAddress(@PathVariable String userId) {
+        try {
+            ShippingAddressEntity address = shippingAddressService.getDefaultAddress(userId);
+            return ResponseEntity.ok(address);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+    }
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ShippingAddressDto> updateShippingAddress(
+            @PathVariable Long id,
+            @RequestBody ShippingAddressDto dto) {
+        try {
+            ShippingAddressDto updatedDto = shippingAddressService.updateShippingAddress(id, dto);
+            return ResponseEntity.ok(updatedDto);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteShippingAddress(@PathVariable Long id) {
+        try {
+            shippingAddressService.deleteShippingAddress(id);
+            return ResponseEntity.noContent().build(); // 204 success, no body
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /*@GetMapping("/default/{userId}")
+    public ResponseEntity<ShippingAddressEntity> getDefaultAddress(@PathVariable String userId) {
         Optional<ShippingAddressEntity> address = shippingAddressRepository.findDefaultAddress(userId);
         return shippingAddressRepository.findDefaultAddress(userId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
 
 
-    }
+    }*/
    /* @PutMapping("/update/{userId}")
     public ResponseEntity<ShippingAddressDto> updateProfile(
             @PathVariable String userId,

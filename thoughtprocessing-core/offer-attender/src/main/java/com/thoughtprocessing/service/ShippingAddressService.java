@@ -28,11 +28,62 @@ public class ShippingAddressService {
     @Autowired
     private ProfileRepository profileRepository;
 
-
+    /*public ShippingAddressService(ShippingAddressRepository shippingAddressRepository,
+                                  ProfileRepository profileRepository) {
+        this.shippingAddressRepository = shippingAddressRepository;
+        this.profileRepository = profileRepository;
+    }*/
 
 
    /* public ShippingAddressService(ShippingAddressDto shippingAddressDto) {
         this.shippingAddressDto = shippingAddressDto;
+    }*/
+
+    // For controllers (UI)
+    public ShippingAddressDto addShippingAddressDto(ShippingAddressDto dto) {
+        ShippingAddressEntity entity = mapDtoToEntity(dto);
+        ShippingAddressEntity savedEntity = shippingAddressRepository.save(entity);
+        return convertToDto(savedEntity);
+    }
+
+    // For checkout/internal use
+    public ShippingAddressEntity addShippingAddressEntity(ShippingAddressDto dto) {
+        ShippingAddressEntity entity = mapDtoToEntity(dto);
+        return shippingAddressRepository.save(entity);
+    }
+
+    // Helper
+    private ShippingAddressEntity mapDtoToEntity(ShippingAddressDto dto) {
+        ShippingAddressEntity entity = new ShippingAddressEntity();
+        entity.setUserId(dto.getUserId());
+        entity.setFullName(dto.getFullName());
+        entity.setMobileNumber(dto.getMobileNumber());
+        entity.setPincode(dto.getPincode());
+        entity.setCity(dto.getCity());
+        entity.setState(dto.getState());
+        entity.setBuildingName(dto.getBuildingName());
+        entity.setStreetName(dto.getStreetName());
+        entity.setLandmark(dto.getLandmark());
+        entity.setAddressType(dto.getAddressType());
+        entity.setUseDefault(dto.isUseDefault());
+        return entity;
+    }
+
+    public ShippingAddressEntity cloneDefaultAddress(String userId) {
+        ShippingAddressEntity defaultAddr = shippingAddressRepository
+                .findDefaultByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Default address not found"));
+
+        ShippingAddressEntity clone = new ShippingAddressEntity();
+        clone.copyFrom(defaultAddr); // centralized copy logic
+        clone.setUseDefault(false);  // snapshot must not be default
+
+        return shippingAddressRepository.save(clone); // persist before returning
+    }
+
+    /*public ShippingAddressEntity addShippingAddressEntity(ShippingAddressDto dto) {
+        ShippingAddressEntity entity = mapDtoToEntity(dto);
+        return shippingAddressRepository.save(entity); // persist before returning
     }*/
 
     public ShippingAddressDto addShippingAddress(ShippingAddressDto dto)
@@ -65,11 +116,29 @@ public class ShippingAddressService {
                 .map(this::convertToDto)
                 .toList(); // or .collect(Collectors.toList()) if using Java 8
     }
+    public ShippingAddressDto updateShippingAddress(Long id, ShippingAddressDto dto) {
+       ShippingAddressEntity entityOpt  = shippingAddressRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Address not found"));
 
+        // update fields
+
+        entityOpt.setFullName(dto.getFullName());
+        entityOpt.setCity(dto.getCity());
+        entityOpt.setState(dto.getState());
+        entityOpt.setPincode(dto.getPincode());
+        entityOpt.setMobileNumber(dto.getMobileNumber());
+        entityOpt.setBuildingName(dto.getBuildingName());
+        entityOpt.setStreetName(dto.getStreetName());
+        entityOpt.setLandmark(dto.getLandmark());
+        entityOpt.setUseDefault(dto.isUseDefault());
+
+        return convertToDto(shippingAddressRepository.save(entityOpt));
+    }
 
 
     private ShippingAddressDto convertToDto(ShippingAddressEntity entity) {
         ShippingAddressDto dto = new ShippingAddressDto();
+        dto.setId(entity.getId());                // ✅ include generated id
         dto.setUserId(entity.getUserId());
         dto.setFullName(entity.getFullName());
         dto.setMobileNumber(entity.getMobileNumber());
@@ -85,7 +154,41 @@ public class ShippingAddressService {
 
 
     }
+    public ShippingAddressEntity getDefaultAddress(String userId) {
+        return shippingAddressRepository.findDefaultByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Default address not found"));
+    }
 
+    public void deleteShippingAddress(Long id) {
+        if (!shippingAddressRepository.existsById(id)) {
+            throw new RuntimeException("Address not found");
+        }
+        shippingAddressRepository.deleteById(id);
+    }
+
+
+    /*public ShippingAddressEntity cloneDefaultAddress(String userId) {
+        ShippingAddressEntity defaultAddr = shippingAddressRepository
+                .findDefaultByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Default address not found"));
+
+        ShippingAddressEntity snapshot = new ShippingAddressEntity();
+        snapshot.setUserId(defaultAddr.getUserId());
+        snapshot.setFullName(defaultAddr.getFullName());
+        snapshot.setMobileNumber(defaultAddr.getMobileNumber());
+        snapshot.setBuildingName(defaultAddr.getBuildingName());
+        snapshot.setStreetName(defaultAddr.getStreetName());
+        snapshot.setCity(defaultAddr.getCity());
+        snapshot.setState(defaultAddr.getState());
+        snapshot.setPincode(defaultAddr.getPincode());
+        snapshot.setLandmark(defaultAddr.getLandmark());
+        snapshot.setAddressType(defaultAddr.getAddressType());
+        snapshot.setUseDefault(false);
+
+        return shippingAddressRepository.save(snapshot);
+    }
+
+*/
     /*public ShippingAddressDto updateShippingAddress(ShippingAddressDto dto) {
         //Optional<ShippingAddressEntity> existingOpt = shippingAddressRepository.findById(dto.getId());
         Optional<ShippingAddressEntity> existingOpt;

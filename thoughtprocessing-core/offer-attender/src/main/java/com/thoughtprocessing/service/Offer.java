@@ -31,4 +31,5 @@ public class Offer {
 
         return productName+" "+this.discountPercentage;
     }
+
 }

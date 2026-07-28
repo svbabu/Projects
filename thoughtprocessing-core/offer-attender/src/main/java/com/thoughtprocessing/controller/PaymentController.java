@@ -33,6 +33,7 @@ import static com.razorpay.Utils.verifySignature;
 
 @RestController
 @RequestMapping("/api/payments")
+@CrossOrigin("origins=http://localhost:8080")
 public class PaymentController {
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
     /*private static final String RAZORPAY_SECRET = "eBbfJ27F8g8SHL3bTueHVVG4";*/ // 👈 declare here

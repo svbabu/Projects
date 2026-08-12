@@ -1,5 +1,7 @@
 package com.thoughtprocessing.dto;
 
+import com.thoughtprocessing.model.Payment;
+
 import java.time.LocalDateTime;
 
 public class PaymentDto {
@@ -60,6 +62,12 @@ public class PaymentDto {
         this.emiEligible = emiEligible;
         this.international = international;
         this.emiStatus = emiStatus;
+    }
+
+    public PaymentDto(Long id, Long amount, String method) {
+        this.id = id;
+        this.amount = amount;
+        this.method = method;
     }
 
     // getters & setters...
@@ -285,6 +293,9 @@ public class PaymentDto {
                 payment.getEmiStatus()
         );
     }*/
+    public static PaymentDto fromEntity(Payment p) {
+        return new PaymentDto(p.getId(), p.getAmount(), p.getMethod());
+    }
 
 }
 

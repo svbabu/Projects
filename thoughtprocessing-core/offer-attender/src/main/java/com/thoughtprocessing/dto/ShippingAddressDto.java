@@ -44,6 +44,14 @@ public class ShippingAddressDto  {
         this.useDefault = useDefault;
         this.orderId = orderId;
     }
+
+    public ShippingAddressDto(Long id, String streetName, String city, String state, String pincode) {
+    this.id = id;
+    this.streetName = streetName;
+    this.city = city;
+    this.state = state;
+    }
+
     public String getUserId() {
         return userId;
     }
@@ -143,5 +151,20 @@ public class ShippingAddressDto  {
     public void setOrder(String  orderId) {
         this.orderId = orderId;
     }
-
+//timeline
+public static ShippingAddressDto fromEntity(ShippingAddressEntity s) {
+    return new ShippingAddressDto(
+            s.getUserId(),
+            s.getFullName(),
+            s.getMobileNumber(),
+            s.getPincode(),
+            s.getCity(),
+            s.getState(),
+            s.getBuildingName(),
+            s.getStreetName(),
+            s.getLandmark(),
+            s.getAddressType(),
+            s.isUseDefault(),
+            s.getOrderId() );
+}
 }

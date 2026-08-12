@@ -51,6 +51,9 @@ public class Order {
     @JoinColumn(name = "shipping_address_id", referencedColumnName = "id")
     private ShippingAddressEntity shippingAddress;
 
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderHistory> timeline = new ArrayList<>();
+
     public Order() {}
     public Order(String orderId, String customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt, List<Payment> payments, List<OrderItemEntity> items,
                  ShippingAddressEntity shippingAddress) {
@@ -70,6 +73,10 @@ public class Order {
 
 
     }
+    /*public Order(List<OrderHistory> timeline)
+    {
+        this.timeline = (timeline != null) ? timeline : new ArrayList<>();
+    }*/
 
     public Order(String orderId) {
         this.orderId = orderId;
@@ -161,6 +168,13 @@ public class Order {
         item.setOrder(this); // maintain bidirectional link
     }
 
+    public List<OrderHistory> getTimeline() {
+        return timeline;
+    }
+
+    public void setTimeline(List<OrderHistory> timeline) {
+        this.timeline = timeline;
+    }
     /*public void removeItem(OrderItemEntity item) {
         this.items.remove(item);
         item.setOrder(null); // break the link safely
@@ -190,5 +204,15 @@ public class Order {
     public void setShippingAddress(ShippingAddressEntity shippingAddress) {
         this.shippingAddress = shippingAddress;
     }
+
+    public void addTimelineEntry(OrderHistory entry) {
+        this.timeline.add(entry);
+        entry.setOrder(this); // maintain bidirectional link
+    }
+    public void removeTimelineEntry(OrderHistory entry) {
+        this.timeline.remove(entry);
+        entry.setOrder(null);
+    }
+
 }
 

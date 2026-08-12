@@ -45,4 +45,21 @@ public class ProductService {
     public List<ProductWithSpecs> getAllProductsWithSpecs() {
         return productRepository.findAllProductsWithSpecs();
     }
+
+    public Optional<ProductDto> getProductById(Long id) {
+        return productRepository.findById(id)
+                .map(product -> {
+                    ProductDto dto = new ProductDto();
+                    dto.setName(product.getName());
+                    dto.setModelName(product.getModelName());
+                    dto.setCategory(product.getCategory());
+                    dto.setBasePrice(product.getBasePrice());
+                    dto.setDescription(product.getDescription());
+                    dto.setBrand(product.getBrand());
+                    dto.setImageUrl(product.getImageUrl());
+                    return dto;
+                });
+    }
+
+
 }

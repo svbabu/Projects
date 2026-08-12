@@ -1,5 +1,8 @@
 package com.thoughtprocessing.dto;
 
+import com.thoughtprocessing.model.Order;
+import com.thoughtprocessing.model.OrderItemEntity;
+
 public class OrderItemDTO {
     private String productId;
     private String productName;
@@ -28,6 +31,13 @@ public class OrderItemDTO {
     this.discountPercentage = discountPercentage;
     this.offerId = offerId;
 
+    }
+
+    public OrderItemDTO(String productId, String productName, Integer quantity, Long price) {
+        this.productId = productId;   // ✔ assign to the correct field
+    this.productName = productName;
+    this.quantity = quantity;
+    this.price = price;
     }
 
     public String getProductId() {
@@ -117,5 +127,20 @@ public class OrderItemDTO {
     public void setPrice(Long price) {
         this.price = price;
         this.appliedPrice = price; // keep them in sync if needed
+    }
+    //timeline
+    public static OrderItemDTO fromEntity(OrderItemEntity i) {
+        return new OrderItemDTO(
+                i.getProductId().toString(),   // use productId, not orderItem id
+                i.getProductName(),
+                i.getModelName(),
+                i.getDescription(),
+                i.getImageUrl(),
+                i.getQuantity(),
+                i.getBasePrice(),
+                i.getAppliedPrice(),
+                i.getDiscountPercentage(),
+                i.getOfferId()
+        );
     }
 }

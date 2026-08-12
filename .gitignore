@@ -1,7 +1,11 @@
-# This file preserves clarity — ignoring noise while honoring structure
 # IntelliJ IDEA project files
 .idea/
 *.iml
+
+# Eclipse project files
+.classpath
+.project
+.settings/
 
 # Build output
 /target/
@@ -17,3 +21,18 @@ Thumbs.db
 # Spring Boot configs with secrets
 application.properties
 application.yml
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Temporary files
+*.swp
+*.tmp

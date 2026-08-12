@@ -1,5 +1,6 @@
 package com.thoughtprocessing.repository;
 import com.thoughtprocessing.model.Order;
+import com.thoughtprocessing.model.OrderHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,7 @@ public interface OrderRepository extends JpaRepository<Order, String>{
     // Example: find order by receipt
     Optional<Order> findByReceipt(String receipt);
     // Example: find order by customerId
+    // Legacy method (single order)
      Optional<Order> findByCustomerId(String customerId);
      // Example: find order by status
     Optional<Order> findByOrderStatus(String orderStatus);
@@ -19,5 +21,10 @@ public interface OrderRepository extends JpaRepository<Order, String>{
 
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.items WHERE o.orderId = :orderId")
     List<Order> findOrderWithItems(@Param("orderId") String orderId);
+
+
+    // New method (multiple orders)
+    List<Order> findAllByCustomerId(String customerId);
+
 }
 

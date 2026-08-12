@@ -188,4 +188,8 @@ public class ShippingAddressEntity {
         // ⚠️ Do not copy id or audit fields
         // ⚠️ Do not copy useDefault directly — set it explicitly in cloneDefaultAddress
     }
+
+    public String getOrderId() {
+        return (order != null) ? order.getOrderId() : null;
+    }
 }

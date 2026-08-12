@@ -5,6 +5,7 @@ import com.thoughtprocessing.dto.ProductWithSpecs;
 import com.thoughtprocessing.repository.ProductRepository;
 import com.thoughtprocessing.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,5 +45,11 @@ public class ProductController {
 
         return productService.getAllProductsWithSpecs();
     }*/
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
+        return productService.getProductById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
 }

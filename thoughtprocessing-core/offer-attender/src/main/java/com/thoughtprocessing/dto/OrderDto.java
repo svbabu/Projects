@@ -1,5 +1,7 @@
 package com.thoughtprocessing.dto;
 
+import com.thoughtprocessing.model.Order;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,7 +18,8 @@ public class OrderDto {
     private List<PaymentDto> payments;
     private List<OrderItemDTO> items;
     private ShippingAddressDto shippingAddress;
-
+    private List<OrderHistoryDto> timeline;
+    public OrderDto() {}
     public OrderDto(String orderId, String customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt, List<PaymentDto> payments, List<OrderItemDTO> items, ShippingAddressDto shippingAddress) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -117,5 +120,47 @@ public class OrderDto {
 
     public void setShippingAddress(ShippingAddressDto shippingAddress) {
         this.shippingAddress = shippingAddress;
+    }
+
+//timeline
+
+    public List<OrderHistoryDto> getTimeline() {
+        return timeline;
+    }
+
+    public void setTimeline(List<OrderHistoryDto> timeline) {
+        this.timeline = timeline;
+    }
+    // Static mapper timeline
+    public static OrderDto fromEntity(Order order) {
+        OrderDto dto = new OrderDto();
+        dto.setOrderId(order.getOrderId());
+        dto.setCustomerId(order.getCustomerId());
+        dto.setOrderStatus(order.getOrderStatus());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setCreatedAt(order.getCreatedAt());
+        dto.setUpdatedAt(order.getUpdatedAt());
+
+        if (order.getItems() != null) {
+            dto.setItems(order.getItems().stream()
+                    .map(OrderItemDTO::fromEntity)
+                    .toList());
+        }
+        if (order.getShippingAddress() != null) {
+            dto.setShippingAddress(ShippingAddressDto.fromEntity(order.getShippingAddress()));
+        }
+
+        if (order.getPayments() != null) {
+            dto.setPayments(order.getPayments().stream()
+                    .map(PaymentDto::fromEntity)
+                    .toList());
+        }
+
+        if (order.getTimeline() != null) {
+            dto.setTimeline(order.getTimeline().stream()
+                    .map(OrderHistoryDto::fromEntity)
+                    .toList());
+        }
+        return dto;
     }
 }

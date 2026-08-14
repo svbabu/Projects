@@ -1,0 +1,4 @@
+delhivery:
+  api:
+    base-url: https://track.delhivery.com/api/v1/packages/json/
+    token: YOUR_DELHIVERY_API_TOKEN

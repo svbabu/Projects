@@ -4,16 +4,22 @@ import com.thoughtprocessing.model.Order;
 import com.thoughtprocessing.model.OrderHistory;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDateTime;
 
 public class OrderHistoryDto {
 
-
+    @NotNull
     private Long historyId;
+    @NotNull
     private String orderId;   // use orderId instead of full Order
+    @NotBlank
     private String status;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @NotNull
     private LocalDateTime statusTime;
     private String remarks;
 

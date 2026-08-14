@@ -1,6 +1,7 @@
 package com.thoughtprocessing.service;
 
 import com.thoughtprocessing.dto.*;
+import com.thoughtprocessing.exception.OrderNotFoundException;
 import com.thoughtprocessing.model.Order;
 import com.thoughtprocessing.model.OrderHistory;
 import com.thoughtprocessing.repository.OrderHistoryRepository;
@@ -11,7 +12,9 @@ import com.thoughtprocessing.dto.ShippingAddressDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -23,13 +26,6 @@ public class OrderService {
         this.historyRepository = historyRepository;
     }
 
-    /* public Optional<Order> getOrderWithTimeline(String orderId) {
-         return orderRepository.findById(orderId).map(order -> {
-             List<OrderHistory> timeline = historyRepository.findByOrderOrderIdOrderByStatusTime(orderId);
-             order.setTimeline(timeline);
-             return order;
-         });
-     }*/
     @Transactional(readOnly = true)
     public Optional<OrderDto> getOrderWithTimeline(String orderId) {
         return orderRepository.findById(orderId).map(order -> {
@@ -57,11 +53,9 @@ public class OrderService {
                     order.getUpdatedAt(),
                     order.getAttempts(),
                     order.getReceipt(),
-                    /*// map payments to PaymentDto
-                    order.getPayments().stream()
-                            .map(p -> new PaymentDto(p.getId(), p.getAmount(), p.getMethod()))
-                            .toList(),*/
+
                     // map payments using static method
+                    //map payments to PaymentDto
                     order.getPayments().stream()
                             .map(PaymentDto::fromEntity)   // <-- here it’s called
                             .toList(),
@@ -71,13 +65,7 @@ public class OrderService {
                             .toList(),
 
                     // map shipping address
-                   /* new ShippingAddressDto(
-                            order.getShippingAddress().getId(),
-                            order.getShippingAddress().getStreetName(),
-                            order.getShippingAddress().getCity(),
-                            order.getShippingAddress().getState(),
-                            order.getShippingAddress().getPincode()
-                    )*/
+
                     ShippingAddressDto.fromEntity(order.getShippingAddress())
             );
 
@@ -127,6 +115,56 @@ public class OrderService {
                 .map(OrderHistoryDto::fromEntity) // static mapper in OrderHistoryDto
                 .toList();
     }
+    @Transactional(readOnly = true)
+    public Map<String, List<OrderHistoryDto>> getAllTimelines() {
+        // Step 1: Fetch all history entries
+        List<OrderHistory> allHistories = historyRepository.findAll();
+
+        // Step 2: Map entities to DTOs
+        List<OrderHistoryDto> dtos = allHistories.stream()
+                .map(OrderHistoryDto::fromEntity)
+                .toList();
+
+        // Step 3: Group by orderId
+        return dtos.stream()
+                .collect(Collectors.groupingBy(OrderHistoryDto::getOrderId));
+    }
+
+    @Transactional
+    public OrderHistoryDto addHistoryEntry(String orderId, OrderHistoryDto dto) {
+        // Step 1: Fetch the order entity and updated customexception
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(()->new OrderNotFoundException(orderId));
+               // .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        // Step 2: Create a new OrderHistory entity
+        OrderHistory history = new OrderHistory(
+                order,
+                dto.getStatus(),
+                dto.getStatusTime() != null ? dto.getStatusTime() : LocalDateTime.now(),
+                dto.getRemarks()
+        );
+
+        // Step 3: Save to repository
+        OrderHistory saved = historyRepository.save(history);
+
+        // Step 4: Map back to DTO
+        return OrderHistoryDto.fromEntity(saved);
+    }
+    @Transactional(readOnly = true)
+    public List<String> getActiveOrderIds() {
+        // Define active statuses
+        List<String> activeStatuses = List.of("PLACED", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY");
+
+        // Query DB
+        List<Order> activeOrders = orderRepository.findByOrderStatusIn(activeStatuses);
+
+        // Map to orderId list
+        return activeOrders.stream()
+                .map(Order::getOrderId)
+                .toList();
+    }
+
 }
 
 

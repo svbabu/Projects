@@ -25,6 +25,7 @@ public interface OrderRepository extends JpaRepository<Order, String>{
 
     // New method (multiple orders)
     List<Order> findAllByCustomerId(String customerId);
+    List<Order> findByOrderStatusIn(List<String> statuses);
 
 }
 

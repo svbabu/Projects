@@ -10,6 +10,7 @@
 # Build output
 /target/
 /build/
+*.class
 
 # Logs
 *.log
@@ -36,3 +37,16 @@ release.properties
 # Temporary files
 *.swp
 *.tmp
+# Maven wrapper
+.mvn/
+mvnw
+mvnw.cmd
+
+# Test reports
+/target/surefire-reports/
+/target/failsafe-reports/
+
+# JAR/WAR/EAR packages
+*.jar
+*.war
+*.ear

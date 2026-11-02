@@ -1,6 +1,7 @@
 package com.thoughtprocessing.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.thoughtprocessing.dto.PaymentDto;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -11,10 +12,15 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
 
+   // @Id
+   // @GeneratedValue(strategy = GenerationType.IDENTITY)
+    //@Column(name = "id")
+    //private Long id;   // internal PK
     @Id
     @Column(name = "order_id")
     private String orderId;   // primary key
-
+    @Column(name="razorpay_order_id")
+    private String razorpayOrderId; // external Razorpay orderId
     @Column(name = "customer_id")
     private String customerId;
 
@@ -35,6 +41,7 @@ public class Order {
 
     @Column(name = "receipt")
     private String receipt;
+    /*private Long shippingAddressId;*/
 
     // One order can have many payments
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -55,9 +62,10 @@ public class Order {
     private List<OrderHistory> timeline = new ArrayList<>();
 
     public Order() {}
-    public Order(String orderId, String customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt, List<Payment> payments, List<OrderItemEntity> items,
+    public Order(String orderId,String razorpayOrderId, String customerId, String orderStatus, Long totalAmount, LocalDateTime createdAt, LocalDateTime updatedAt, Integer attempts, String receipt,Long shippingAddressId, List<Payment> payments, List<OrderItemEntity> items,
                  ShippingAddressEntity shippingAddress) {
         this.orderId = orderId;
+        this.razorpayOrderId = razorpayOrderId;
         this.customerId = customerId;
         this.orderStatus = orderStatus;
         this.totalAmount = totalAmount;
@@ -65,6 +73,7 @@ public class Order {
         this.updatedAt = updatedAt;
         this.attempts = attempts;
         this.receipt = receipt;
+       // this.shippingAddressId=shippingAddressId;
         this.payments = (payments != null) ? payments : new ArrayList<>();
         this.items = (items != null) ? items : new ArrayList<>();
         this.shippingAddress = shippingAddress;
@@ -175,6 +184,14 @@ public class Order {
     public void setTimeline(List<OrderHistory> timeline) {
         this.timeline = timeline;
     }
+
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
     /*public void removeItem(OrderItemEntity item) {
         this.items.remove(item);
         item.setOrder(null); // break the link safely
@@ -214,5 +231,12 @@ public class Order {
         entry.setOrder(null);
     }
 
+   /* public Long getShippingAddressId() {
+        return shippingAddressId;
+    }
+
+    public void setShippingAddressId(Long shippingAddressId) {
+        this.shippingAddressId = shippingAddressId;
+    }*/
 }
 

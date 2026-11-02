@@ -1,6 +1,7 @@
 package com.thoughtprocessing.dto;
 
 import com.thoughtprocessing.model.Payment;
+import jakarta.persistence.Column;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +11,9 @@ public class PaymentDto {
     private Long amount;
     private String status;       // PENDING, SUCCESS, FAILED
     private String orderId;
-    private String paymentId;    // Razorpay payment_id
+    private String razorpayOrderId; // external Razorpay orderId
+    private String paymentId;
+    private String razorpayPaymentId; // Razorpay payment_id
     private String method;       // upi, netbanking, card, wallet
     private String upiId;
     private String transactionId;
@@ -32,8 +35,8 @@ public class PaymentDto {
 
     // Constructors
     public PaymentDto() {}
-    public PaymentDto(Long id, String bank, Long amount, String status, String orderId,
-                      String paymentId, String method, String upiId, String transactionId,
+    public PaymentDto(Long id, String bank, Long amount, String status, String orderId,String razorpayOrderId,
+                      String paymentId,String razorpayPaymentId, String method, String upiId, String transactionId,
                       String personName, String companyName, String contact, String email,
                       LocalDateTime createdAt, String rrn, String cardDetails, String cardNetwork,
                       String cardType, String issuer, String cardSubType, String authCode,
@@ -43,7 +46,9 @@ public class PaymentDto {
         this.amount = amount;
         this.status = status;
         this.orderId = orderId;
+        this.razorpayOrderId = razorpayOrderId;
         this.paymentId = paymentId;
+        this.razorpayPaymentId = razorpayPaymentId;
         this.method = method;
         this.upiId = upiId;
         this.transactionId = transactionId;
@@ -64,10 +69,31 @@ public class PaymentDto {
         this.emiStatus = emiStatus;
     }
 
-    public PaymentDto(Long id, Long amount, String method) {
+    public PaymentDto(Long id,String bank, Long amount,
+                      String method,String status,
+                      String orderId,
+                      String razorpayOrderId,
+                      String paymentId,String razorpayPaymentId,
+                      String upiId,String transactionId,
+                      String contact,String email,
+                      LocalDateTime createdAt) {
         this.id = id;
+        this.bank = bank;
         this.amount = amount;
         this.method = method;
+        this.status = status;
+        this.orderId = orderId;
+        this.razorpayOrderId = razorpayOrderId;
+        this.paymentId = paymentId;
+        this.razorpayPaymentId = razorpayPaymentId;
+
+        this.upiId = upiId;
+        this.transactionId = transactionId;
+        this.contact = contact;
+        this.email = email;
+        this.createdAt = createdAt;
+
+
     }
 
     // getters & setters...
@@ -263,38 +289,64 @@ public class PaymentDto {
     public void setEmiStatus(String emiStatus) {
         this.emiStatus = emiStatus;
     }
-    /*public static PaymentDto fromEntity(Payment payment) {
-        if (payment == null) return null;
 
-        return new PaymentDto(
-                payment.getId(),
-                payment.getBank(),
-                payment.getAmount(),
-                payment.getStatus(),
-                payment.getOrder() != null ? payment.getOrder().getOrderId() : null,
-                payment.getPaymentId(),
-                payment.getMethod(),
-                payment.getUpiId(),
-                payment.getTransactionId(),
-                payment.getPersonName(),
-                payment.getCompanyName(),
-                payment.getContact(),
-                payment.getEmail(),
-                payment.getCreatedAt(),
-                payment.getRrn(),
-                payment.getCardDetails(),
-                payment.getCardNetwork(),
-                payment.getCardType(),
-                payment.getIssuer(),
-                payment.getCardSubType(),
-                payment.getAuthCode(),
-                payment.getEmiEligible(),
-                payment.getInternational(),
-                payment.getEmiStatus()
-        );
-    }*/
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
+
+    public String getRazorpayPaymentId() {
+        return razorpayPaymentId;
+    }
+
+    public void setRazorpayPaymentId(String razorpayPaymentId) {
+        this.razorpayPaymentId = razorpayPaymentId;
+    }
+
+    /*public static PaymentDto fromEntity(Payment payment) {
+            if (payment == null) return null;
+
+            return new PaymentDto(
+                    payment.getId(),
+                    payment.getBank(),
+                    payment.getAmount(),
+                    payment.getStatus(),
+                    payment.getOrder() != null ? payment.getOrder().getOrderId() : null,
+                    payment.getPaymentId(),
+                    payment.getMethod(),
+                    payment.getUpiId(),
+                    payment.getTransactionId(),
+                    payment.getPersonName(),
+                    payment.getCompanyName(),
+                    payment.getContact(),
+                    payment.getEmail(),
+                    payment.getCreatedAt(),
+                    payment.getRrn(),
+                    payment.getCardDetails(),
+                    payment.getCardNetwork(),
+                    payment.getCardType(),
+                    payment.getIssuer(),
+                    payment.getCardSubType(),
+                    payment.getAuthCode(),
+                    payment.getEmiEligible(),
+                    payment.getInternational(),
+                    payment.getEmiStatus()
+            );
+        }*/
     public static PaymentDto fromEntity(Payment p) {
-        return new PaymentDto(p.getId(), p.getAmount(), p.getMethod());
+        return new PaymentDto(p.getId(),p.getBank(),
+                p.getAmount(), p.getMethod(),
+               //p.getOrderId,
+                p.getStatus(),p.getOrder().getOrderId(),
+                p.getRazorpayOrderId(),
+                p.getPaymentId(),
+                p.getRazorpayPaymentId(),
+                p.getUpiId(),
+                p.getTransactionId(),p.getContact(),
+                p.getEmail(),p.getCreatedAt());
     }
 
 }

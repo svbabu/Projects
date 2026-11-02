@@ -19,8 +19,12 @@ public class Payment {
     private Long amount;
     @Column(name = "status")
     private String status; // e.g. PENDING, SUCCESS, FAILED
-    @Column(name="order_id" ,insertable = false, updatable = false)
-    private String orderId;
+  /*  @Column(name="order_id" ,insertable = false, updatable = false)
+    private String orderId;*/
+    @Column(name="razorpay_order_id")
+    private String razorpayOrderId; // external Razorpay orderId
+    @Column(name="razorpay_payment_id")
+    private String razorpayPaymentId;
     @Column(name="paymentId")
     private String paymentId;     // Razorpay payment_id
     @Column(name="method")
@@ -62,7 +66,8 @@ public class Payment {
 
     @ManyToOne @JoinColumn(name = "merchant_id")
     private Merchant merchant;
-    @ManyToOne @JoinColumn(name = "order_id")
+    @ManyToOne
+    @JoinColumn(name = "order_id")
     @JsonIgnore
     private Order order;               // foreign key to orders table
 
@@ -72,7 +77,7 @@ public class Payment {
     public Payment() {
     }
     public Payment(Long id, String bank, Long amount, String status,
-                   String orderId, String method, String paymentId, String upiId, String transactionId, String personName,
+                   String orderId,String razorpayOrderId, String method, String paymentId,String razorpayPaymentId, String upiId, String transactionId, String personName,
                    String companyName, String contact, String email, LocalDateTime createdAt,
                    String rrn, String cardDetails, String cardNetwork, String cardType, String issuer,
                    String cardSubType, String authCode, Boolean emiEligible, Boolean  international, String emiStatus,
@@ -82,8 +87,10 @@ public class Payment {
         this.bank = bank;
         this.amount = amount;
         this.status = status;
-        this.orderId = orderId;
+       // this.orderId = orderId;
+        this.razorpayOrderId = razorpayOrderId;
         this.paymentId = paymentId;
+        this.razorpayPaymentId = razorpayPaymentId;
         this.method = method;
         this.upiId = upiId;
         this.transactionId = transactionId;
@@ -242,13 +249,13 @@ public class Payment {
     public void setStatus(String status) {
         this.status = status;
     }
-    public String getOrderId() {
+  /*public String getOrderId() {
         return orderId;
     }
 
     public void setOrderId(String orderId) {
         this.orderId = orderId;
-    }
+    }*/
     public String getPersonName() {
         return personName;
     }
@@ -310,6 +317,21 @@ public class Payment {
         return order;
     }
 
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
+
+    public String getRazorpayPaymentId() {
+        return razorpayPaymentId;
+    }
+
+    public void setRazorpayPaymentId(String razorpayPaymentId) {
+        this.razorpayPaymentId = razorpayPaymentId;
+    }
 
 
 }

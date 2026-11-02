@@ -2,10 +2,13 @@ package com.thoughtprocessing.service;
 
 import com.thoughtprocessing.dto.*;
 import com.thoughtprocessing.exception.OrderNotFoundException;
+import com.thoughtprocessing.helper.OrderStatusUpdater;
 import com.thoughtprocessing.model.Order;
 import com.thoughtprocessing.model.OrderHistory;
+import com.thoughtprocessing.model.ShippingAddressEntity;
 import com.thoughtprocessing.repository.OrderHistoryRepository;
 import com.thoughtprocessing.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import com.thoughtprocessing.dto.ShippingAddressDto;
@@ -14,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,10 +25,64 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderHistoryRepository historyRepository;
 
+    @Autowired
+    private  OrderStatusUpdater orderStatusUpdater;
+    @Autowired
+    private PaymentService paymentService;
+
     public OrderService(OrderRepository orderRepository, OrderHistoryRepository historyRepository) {
         this.orderRepository = orderRepository;
         this.historyRepository = historyRepository;
     }
+    @Transactional(readOnly = true)
+    public Order findEntityById(String orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+    @Transactional
+    public OrderDto createOrderForCustomer(String customerId, Long amount, String receipt, Long shippingAddressId) throws Exception {
+        System.out.println(
+                "createOrderForCustomer CALLED"
+        );
+        // Step 1: Call Razorpay via PaymentService
+        String razorpayOrderId = paymentService.createOrder(Math.toIntExact(amount)); // returns order.get("id")
+
+        // Step 2: Build Order entity
+        Order order = new Order();
+        order.setOrderId(UUID.randomUUID().toString());   // internal ID
+        order.setCustomerId(customerId);
+        order.setOrderStatus("CREATED");
+        order.setTotalAmount(amount);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+        order.setAttempts(0);
+        order.setReceipt(receipt);
+        order.setRazorpayOrderId(razorpayOrderId);        // external Razorpay ID
+        System.out.println(
+                "createOrderForCustomer ->Internal OrderId = "
+                        + order.getOrderId()
+        );
+        System.out.println(
+                "Razorpay OrderId generated in createOrderForCustomer = "
+                        + razorpayOrderId
+        );
+
+        if (shippingAddressId != null) {
+            ShippingAddressEntity address = new ShippingAddressEntity();
+            address.setId(shippingAddressId);
+            order.setShippingAddress(address);
+        }
+
+        // Step 3: Save order
+        Order saved = orderRepository.save(order);
+
+        // Step 4: Add initial history entry
+        historyRepository.save(new OrderHistory(saved, "CREATED", LocalDateTime.now(), "Order created"));
+
+        // Step 5: Return DTO
+        return OrderDto.fromEntity(saved);
+    }
+
 
     @Transactional(readOnly = true)
     public Optional<OrderDto> getOrderWithTimeline(String orderId) {
@@ -46,6 +104,7 @@ public class OrderService {
             // Map Order -> OrderDto
             OrderDto dto = new OrderDto(
                     order.getOrderId(),
+                    order.getRazorpayOrderId(),
                     order.getCustomerId(),
                     order.getOrderStatus(),
                     order.getTotalAmount(),
@@ -53,6 +112,9 @@ public class OrderService {
                     order.getUpdatedAt(),
                     order.getAttempts(),
                     order.getReceipt(),
+
+
+
 
                     // map payments using static method
                     //map payments to PaymentDto
@@ -87,9 +149,21 @@ public class OrderService {
                     .toList();
         }
 // Step 3: Map entities to DTOs
+       // return orders.stream()
+             //   .map(OrderDto::fromEntity)
+             //   .toList();  // items/payments initialized here
         return orders.stream()
-                .map(OrderDto::fromEntity)
-                .toList();  // items/payments initialized here
+                .map(order -> {
+                    List<OrderHistoryDto> history = historyRepository
+                            .findByOrderOrderIdOrderByStatusTime(order.getOrderId())
+                            .stream()
+                            .map(OrderHistoryDto::fromEntity)
+                            .toList();
+                    OrderDto dto = OrderDto.fromEntity(order);
+                    dto.setTimeline(history);
+                    return dto;
+                })
+                .toList();
     }
 
     private LocalDateTime calculateCutoff(String range) {
@@ -165,6 +239,22 @@ public class OrderService {
                 .toList();
     }
 
+    public void updateOrderStatus(Order order, String status, String remarks) {
+       orderStatusUpdater.updateOrderStatus(order, status, remarks);
+    }
+
+    public void markAsShipped(String orderId) {
+        orderStatusUpdater.markAsShipped(orderId);
+    }
+
+
+    public void markAsDelivered(String orderId) {
+        orderStatusUpdater.markAsDelivered(orderId);
+    }
+
+    public void markOrder(String orderId, String status, String remarks) {
+        orderStatusUpdater.markOrder(orderId, status, remarks);
+    }
 }
 
 

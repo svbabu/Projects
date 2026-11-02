@@ -56,12 +56,13 @@ public class CheckoutService {
         return shippingAddressService.getDefaultAddress(userId);
     }
     @Transactional
-    public OrderResponseDTO createOrder(OrderRequestDTO request) throws Exception {
+    public OrderResponseDTO createOrder(OrderRequestDTO request) throws Exception
+    {
         // Step 1: Call PaymentService based on payment method
-        Payment payment;
-        String method = request.getPayment().getMethod().toLowerCase();
+        //Payment payment;
+        //String method = request.getPayment().getMethod().toLowerCase();
 
-        switch (method) {
+        /*switch (method) {
             case "netbanking":
                 payment = paymentService.savePaymentWithOrder(
                         request.getPayment().getBank(),
@@ -90,17 +91,21 @@ public class CheckoutService {
 
             default:
                 throw new IllegalArgumentException("Unsupported payment method: " + method);
-        }
+        }*/
 
         // Step 2: Build Order entity with Razorpay ID (if applicable)
-        Order order = toOrder(request);
+        // Create local order only
 
-        if (!"cod".equals(method)) {
+        Order order = toOrder(request);
+        // Generate internal order id if needed
+        order.setOrderId(UUID.randomUUID().toString());
+
+       /* if (!"cod".equals(method)) {
             String razorpayOrderId = payment.getOrder().getOrderId();
             order.setOrderId(razorpayOrderId);
         } else {
             order.setOrderId(generateInternalOrderId()); // your own generator for COD
-        }
+        }*/
 
         // Step 3: Snapshot shipping address BEFORE saving order
 
@@ -151,8 +156,14 @@ public class CheckoutService {
 
 
         // Step 4: Attach items
-        List<OrderItemEntity> existingItems = orderItemRepository.findByOrderOrderId(order.getOrderId());
+        /*List<OrderItemEntity> existingItems = orderItemRepository.findByOrderOrderId(order.getOrderId());
         if (existingItems.isEmpty() && request.getItems() != null) {
+            for (OrderItemDTO dto : request.getItems()) {
+                order.addItem(toItemEntity(dto, order));
+            }
+        }*/
+        // Add items
+        if (request.getItems() != null) {
             for (OrderItemDTO dto : request.getItems()) {
                 order.addItem(toItemEntity(dto, order));
             }
@@ -162,14 +173,19 @@ public class CheckoutService {
         Order savedOrder = orderRepository.save(order);
 
         // Step 6: Re‑attach Payment
-        payment.setOrder(savedOrder);
-        paymentRepository.save(payment);
+       // payment.setOrder(savedOrder);
+        //paymentRepository.save(payment);
 
         // Step 7: Build response
-        OrderResponseDTO dto = toResponseDTO(savedOrder, payment);
-        if (!"cod".equals(method)) {
-            dto.setRazorpayOrderId(order.getOrderId());
-        }
+        OrderResponseDTO dto= new OrderResponseDTO() ;
+       // dto= toResponseDTO(savedOrder, payment);
+       // if (!"cod".equals(method)) {
+            //dto.setRazorpayOrderId(order.getOrderId());
+        //}
+        dto.setOrderId(savedOrder.getOrderId());
+        dto.setCustomerId(savedOrder.getCustomerId());
+        dto.setOrderStatus(savedOrder.getOrderStatus());
+        dto.setTotalAmount(savedOrder.getTotalAmount());
         return dto;
     }
 
@@ -459,7 +475,8 @@ public class CheckoutService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        Payment payment = paymentRepository.findByOrderId(orderId);
+       // Payment payment = paymentRepository.findByOrderId(orderId);
+        Payment payment = paymentRepository.findByOrder_OrderId(orderId);
         if (payment == null) {
             throw new RuntimeException("Payment not found: " + orderId);
         }

@@ -2,7 +2,7 @@ package com.thoughtprocessing.dto;
 
 import com.thoughtprocessing.model.Order;
 import com.thoughtprocessing.model.ShippingAddressEntity;
-
+import java.lang.Boolean;
 import java.time.LocalDate;
 
 /*@Data
@@ -23,14 +23,14 @@ public class ShippingAddressDto  {
     private String streetName;
     private String landmark;
     private String addressType;
-    private boolean useDefault = false;
+    private Boolean useDefault = false;
     private String orderId; // keep it simple
     public ShippingAddressDto() {
 
     }
     public ShippingAddressDto(String userId,String fullName, String mobileNumber, String pincode,
                               String city, String state, String buildingName, String streetName,
-                              String landmark, String addressType, boolean useDefault, String orderId) {
+                              String landmark, String addressType, Boolean useDefault, String orderId) {
         this.userId = userId;
         this.fullName = fullName;
         this.mobileNumber = mobileNumber;
@@ -41,15 +41,32 @@ public class ShippingAddressDto  {
         this.streetName = streetName;
         this.landmark = landmark;
         this.addressType = addressType;
+
         this.useDefault = useDefault;
         this.orderId = orderId;
     }
 
-    public ShippingAddressDto(Long id, String streetName, String city, String state, String pincode) {
+    public ShippingAddressDto(Long id,String addressType,
+                              String buildingName, String city,
+                              String fullName,String landmark,
+                              String mobileNumber,String pincode,
+                              String state,String streetName,
+                              Boolean useDefault,
+                              String userId,String orderId
+                              ) {
     this.id = id;
-    this.streetName = streetName;
+    this.addressType = addressType;
+    this.buildingName = buildingName;
     this.city = city;
+    this.fullName=fullName;
+    this.landmark = landmark;
+    this.mobileNumber = mobileNumber;
+    this.pincode = pincode;
     this.state = state;
+    this.streetName = streetName;
+    this.useDefault=useDefault;
+    this.userId = userId;
+    this.orderId=orderId;
     }
 
     public String getUserId() {
@@ -131,11 +148,11 @@ public class ShippingAddressDto  {
         this.addressType = addressType;
     }
 
-    public boolean isUseDefault() {
+    public Boolean isUseDefault() {
         return useDefault;
     }
 
-    public void setUseDefault(boolean useDefault) {
+    public void setUseDefault(Boolean useDefault) {
         this.useDefault = useDefault;
     }
 
@@ -153,18 +170,27 @@ public class ShippingAddressDto  {
     }
 //timeline
 public static ShippingAddressDto fromEntity(ShippingAddressEntity s) {
-    return new ShippingAddressDto(
-            s.getUserId(),
-            s.getFullName(),
-            s.getMobileNumber(),
-            s.getPincode(),
-            s.getCity(),
-            s.getState(),
-            s.getBuildingName(),
-            s.getStreetName(),
-            s.getLandmark(),
-            s.getAddressType(),
-            s.isUseDefault(),
-            s.getOrderId() );
+    if (s == null) {
+        return null; // or return a new ShippingAddressDto() if you prefer an empty object
+    }
+        return new ShippingAddressDto(
+                s.getId(),
+                s.getAddressType(),
+                s.getBuildingName(),
+                s.getCity(),
+                s.getFullName(),
+                s.getLandmark(),
+                s.getMobileNumber(),
+                s.getPincode(),
+                s.getState(),
+                s.getStreetName(),
+                s.isUseDefault(),
+                s.getUserId(),
+                s.getOrderId()
+
+
+
+            );
+
 }
 }

@@ -4,9 +4,13 @@ import com.razorpay.Order;
 
 import com.thoughtprocessing.dto.OrderSuccessDTO;
 import com.thoughtprocessing.dto.RazorpayResponse;
+import com.thoughtprocessing.helper.OrderStatusUpdater;
 import com.thoughtprocessing.model.Merchant;
+import com.thoughtprocessing.model.OrderHistory;
 import com.thoughtprocessing.model.Payment;
+import com.thoughtprocessing.model.ShippingAddressEntity;
 import com.thoughtprocessing.repository.MerchantRepository;
+import com.thoughtprocessing.repository.OrderHistoryRepository;
 import com.thoughtprocessing.repository.OrderRepository;
 import com.thoughtprocessing.repository.PaymentRepository;
 import org.apache.commons.codec.binary.Hex;
@@ -21,7 +25,7 @@ import org.springframework.stereotype.Service;
 
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
-
+import org.springframework.transaction.annotation.Transactional;
 
 
 import javax.crypto.Mac;
@@ -29,6 +33,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -40,6 +45,15 @@ public class PaymentService {
     OrderRepository orderRepository;
     @Autowired
     MerchantRepository merchantRepository;
+    @Autowired
+    private  OrderStatusUpdater orderStatusUpdater;
+    /*@Autowired
+    private OrderHistoryRepository historyRepository; // ✅ inject here*/
+
+    /*@Autowired
+    private OrderService orderService;*/
+
+
     private RazorpayClient razorpayClient;
     @Value("${razorpay.webhook.secret}")
     private String webhookSecret;  // <-- declare here
@@ -52,126 +66,213 @@ public class PaymentService {
         // Initialize with your Test or Live keys
         this.razorpayClient = new RazorpayClient(key, secret);
     }
-    public Payment savePaymentWithOrder(String bank, Long amount) throws Exception {
-        System.out.println("Received amount: " + amount);
+
+
+    public Payment attachPaymentToOrder(com.thoughtprocessing.model.Order order, String razorpayOrderId,String method,String bankOrUpiId, Long amount) {
+        System.out.println("attachPaymentToOrder is calling");
+        System.out.println(
+                "attachPaymentToOrder -> Razorpay OrderId = "
+                        + razorpayOrderId
+        );
         Payment payment = new Payment();
-        payment.setBank(bank);  //Net banking call use bank url for login with pay
+        payment.setOrder(order);
+        payment.setRazorpayOrderId(razorpayOrderId);
+        payment.setMethod(method); // e.g. "NETBANKING", "CARD", "UPI"
+        payment.setBank(bankOrUpiId); // optional, depending on method
         payment.setAmount(amount);
         payment.setStatus("PENDING");
-
-        logger.info("Payment Added Successfully");
-        logger.info("Payment Added Successfully: Bank={} Amount={}", payment.getBank(), payment.getAmount());
-
-        // Create Razorpay order
-        String orderJson = createOrder(Math.toIntExact(amount));
-        JSONObject orderObj = new JSONObject(orderJson);
-        String razorpayOrderId = orderObj.getString("id");
-        // Create local Order entity and save it
-        Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
-                .orElseThrow(() -> new RuntimeException("Merchant not found"));
-
-        com.thoughtprocessing.model.Order order = new com.thoughtprocessing.model.Order();
-        order.setOrderId(razorpayOrderId);
-        order.setOrderStatus("PENDING");
-        order.setTotalAmount(amount);
-        order.setAttempts(0); // ✅ initialize attempts
-        orderRepository.save(order);
-
-        /*payment.setOrderId(orderId);*/
-        payment.setMerchant(merchant);
-        payment.setOrder(order);   // ✅ attach relationship
-        logger.info("Order {} and Payment {} saved successfully", order.getOrderId(), payment.getPaymentId());
         return paymentRepository.save(payment);
     }
-    public Payment saveUpiPayment(String upiId, Long amount) throws Exception {
+    @Transactional
+    public Payment savePaymentWithOrder(String checkoutOrderId,String bank, Long amount) throws Exception {
+        System.out.println("savePaymentWithOrder is calling");
+        // Build Razorpay order request
+        JSONObject orderRequest = new JSONObject();
+        orderRequest.put("amount", amount);
+        orderRequest.put("currency", "INR");
+        orderRequest.put("payment_capture", 1);
+
+        // Create Razorpay order once
+        com.razorpay.Order razorpayOrder = razorpayClient.orders.create(orderRequest);
+
+        String razorpayOrderId = razorpayOrder.get("id");
+        System.out.println(
+                "savePaymentWithOrder -> Razorpay OrderId = "
+                        + razorpayOrderId
+        );
+
+        Merchant merchant = merchantRepository.findById(101L)
+                .orElseThrow(() -> new RuntimeException("Merchant not found"));
+
+        System.out.println(
+                "checkoutOrderId received = " + checkoutOrderId
+        );
+        com.thoughtprocessing.model.Order order =
+                orderRepository.findById(checkoutOrderId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Order not found: "
+                                                + checkoutOrderId
+                                )
+                        );
+        order.setRazorpayOrderId(razorpayOrderId);
+        //order.setOrderStatus("CREATED");
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+        // 🔑 Check if payment already exists
+        Optional<Payment> existingPayment = paymentRepository.findByRazorpayOrderId(razorpayOrderId);
+        Payment payment;
+        if (existingPayment.isPresent()) {
+            payment = existingPayment.get();
+            payment.setBank(bank);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("NetBanking");
+        } else {
+            payment = new Payment();
+            payment.setBank(bank);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("netbanking");
+            payment.setRazorpayOrderId(razorpayOrderId);
+            payment.setMerchant(merchant);
+            payment.setOrder(order);
+        }
+        paymentRepository.save(payment);
+
+        return payment;
+    }
+
+    @Transactional
+   public Payment saveUpiPayment(String checkoutOrderId,String upiId, Long amount) throws Exception {
         System.out.println("Received UPI payment request: " + upiId + " Amount: " + amount);
         // Create Razorpay order
-        String orderJson = createOrder(Math.toIntExact(amount));
-        JSONObject orderObj = new JSONObject(orderJson);
-        String razorpayOrderId = orderObj.getString("id");
+        // Build Razorpay order request
+        JSONObject orderRequest = new JSONObject();
+        orderRequest.put("amount", amount);
+        orderRequest.put("currency", "INR");
+        orderRequest.put("payment_capture", 1);
 
-        // Create local Order entity and save it
-     /*  com.thoughtprocessing.model.Order order = new com.thoughtprocessing.model.Order();
-        order.setOrderId(razorpayOrderId);
-        order.setOrderStatus("PENDING");
-        order.setTotalAmount(amount);
-        order.setAttempts(0); // ✅ initialize attempts
-        orderRepository.save(order);*/
+        // Create Razorpay order once
+        com.razorpay.Order razorpayOrder = razorpayClient.orders.create(orderRequest);
+
+        String razorpayOrderId = razorpayOrder.get("id");
+        System.out.println(
+                "saveUpiPayment -> Razorpay OrderId = "
+                        + razorpayOrderId
+        );
+
         Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
                 .orElseThrow(() -> new RuntimeException("Merchant not found"));
-
-
-       com.thoughtprocessing.model.Order  order = orderRepository.findByOrderId(razorpayOrderId)
-                .orElseGet(() -> {
-                    com.thoughtprocessing.model.Order newOrder = new com.thoughtprocessing.model.Order();
-                    newOrder.setOrderId(razorpayOrderId);
-                    newOrder.setOrderStatus("PENDING");
-                    newOrder.setTotalAmount(amount);
-                   newOrder.setAttempts(0); //initialize
-                    return orderRepository.save(newOrder);
-
-                });
-        // ✅ Increment attempts for retry
-        order.setAttempts(order.getAttempts() + 1);
+        System.out.println(
+                "checkoutOrderId received = " + checkoutOrderId
+        );
+        com.thoughtprocessing.model.Order order =
+                orderRepository.findById(checkoutOrderId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Order not found: "
+                                                + checkoutOrderId
+                                )
+                        );
+        order.setRazorpayOrderId(razorpayOrderId);
+        //order.setOrderStatus("CREATED");
+        order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
+        // 🔑 Check if payment already exists
+        Optional<Payment> existingPayment = paymentRepository.findByRazorpayOrderId(razorpayOrderId);
+        Payment payment;
+        if (existingPayment.isPresent()) {
+            payment = existingPayment.get();
+            //payment.setBank(bank);
+            payment.setUpiId(upiId);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("upi");
+            payment.setRazorpayOrderId(razorpayOrderId);
+        } else {
+            payment = new Payment();
+            //payment.setBank(bank);
+            payment.setUpiId(upiId);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("upi");
+            payment.setRazorpayOrderId(razorpayOrderId);
+            payment.setMerchant(merchant);
+            payment.setOrder(order);
+        }
+        paymentRepository.save(payment);
 
+        return payment;
 
-
-        Payment payment = new Payment();
-        payment.setUpiId(upiId);
-        payment.setAmount(amount);
-        payment.setStatus("PENDING");
-        payment.setMethod("upi");
-
-        payment.setMerchant(merchant);
-        payment.setOrder(order); // ✅ attach relationship
-        /*payment.setOrder(order1);*/
-        logger.info("UPI Payment Added Successfully: UPI={} Amount={}", payment.getUpiId(), payment.getAmount());
-
-       /* // Create Razorpay order
-        String orderJson = createOrder(Math.toIntExact(amount));
-        JSONObject orderObj = new JSONObject(orderJson);
-        String orderId = orderObj.getString("id");
-
-        payment.setOrderId(orderId);*/
-
-        logger.info("Order {} and Payment {} saved successfully", order.getOrderId(), payment.getPaymentId());
-        return paymentRepository.save(payment);
     }
-    public Payment saveCardPayment(Long amount) throws Exception {
+    @Transactional
+    public Payment saveCardPayment(String checkoutOrderId,Long amount) throws Exception {
         System.out.println("Received Card payment request: Amount=" + amount);
-
-        Payment payment = new Payment();
-        payment.setAmount(amount);
-        payment.setStatus("PENDING");
-        payment.setMethod("card");
-
-        logger.info("Card Payment Added Successfully: Amount={}", payment.getAmount());
-
         // Create Razorpay order
-        String orderJson = createOrder(Math.toIntExact(amount));
-        JSONObject orderObj = new JSONObject(orderJson);
-        String razorpayOrderId = orderObj.getString("id");
+        // Build Razorpay order request
+        JSONObject orderRequest = new JSONObject();
+        orderRequest.put("amount", amount);
+        orderRequest.put("currency", "INR");
+        orderRequest.put("payment_capture", 1);
 
+        // Create Razorpay order once
+        com.razorpay.Order razorpayOrder = razorpayClient.orders.create(orderRequest);
 
+        String razorpayOrderId = razorpayOrder.get("id");
+        System.out.println(
+                "saveCardPayment -> Razorpay OrderId = "
+                        + razorpayOrderId
+        );
         Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
                 .orElseThrow(() -> new RuntimeException("Merchant not found"));
 
-        com.thoughtprocessing.model.Order  order = orderRepository.findByOrderId(razorpayOrderId)
-                .orElseGet(() -> {
-                    com.thoughtprocessing.model.Order newOrder = new com.thoughtprocessing.model.Order();
-                    newOrder.setOrderId(razorpayOrderId);
-                    newOrder.setOrderStatus("PENDING");
-                    newOrder.setTotalAmount(amount);
-                    newOrder.setAttempts(0);
-                    return orderRepository.save(newOrder); });
+        System.out.println(
+                "checkoutOrderId received = " + checkoutOrderId
+        );
+        com.thoughtprocessing.model.Order order =
+                orderRepository.findById(checkoutOrderId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Order not found: "
+                                                + checkoutOrderId
+                                )
+                        );
+        order.setRazorpayOrderId(razorpayOrderId);
+        //order.setOrderStatus("CREATED");
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+        // 🔑 Check if payment already exists
+        Optional<Payment> existingPayment = paymentRepository.findByRazorpayOrderId(razorpayOrderId);
+        Payment payment;
+        if (existingPayment.isPresent()) {
+            payment = existingPayment.get();
+            //payment.setBank(bank);
+           // payment.setUpiId(upiId);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("card");
+            payment.setRazorpayOrderId(razorpayOrderId);
+            logger.info("Card Payment Added Successfully: Amount={}", payment.getAmount());
+        } else {
+            payment = new Payment();
+            //payment.setBank(bank);
+            //payment.setUpiId(upiId);
+            payment.setAmount(amount);
+            payment.setStatus("PENDING");
+            payment.setMethod("card");
+            payment.setRazorpayOrderId(razorpayOrderId);
+            payment.setMerchant(merchant);
+            payment.setOrder(order);
+            logger.info("Card Payment Added Successfully: Amount={}", payment.getAmount());
+        }
+        paymentRepository.save(payment);
 
-        payment.setMerchant(merchant);
-        payment.setOrderId(razorpayOrderId);
-        logger.info("Order {} and Payment {} saved successfully", order.getOrderId(), payment.getPaymentId());
-        return paymentRepository.save(payment);
+        return payment;
     }
     public String createOrder(int amount) throws Exception {
+        System.out.println("createOrder() method called");
+
         JSONObject orderRequest = new JSONObject();
         orderRequest.put("amount", amount ); // amount in paise
         orderRequest.put("currency", "INR");
@@ -179,28 +280,34 @@ public class PaymentService {
 
         // Correct way: use razorpayClient.orders.create(...)
         Order order = razorpayClient.orders.create(orderRequest);
+        String orderId = order.get("id");
+        System.out.println(
+                "createOrder() generated Razorpay OrderId = "
+                        + orderId
+        );
 
         return order.toString(); // or return order.get("id")
     }
+    @Transactional
     public Payment updatePayment(Payment payment) {
         return paymentRepository.save(payment);
     }
 
     public boolean verifySignature(RazorpayResponse response) {
         try {
-            System.out.println("Verify request: orderId=" + response.getOrderId() +
-                    ", paymentId=" + response.getPaymentId() +
+            System.out.println("Verify request: orderId=" + response.getRazorpayOrderId() +
+                    ", paymentId=" + response.getRazorpayPaymentId() +
                     ", signature=" + response.getSignature());
 
 
-            String payload = response.getOrderId() + "|" + response.getPaymentId();
+            String payload = response.getRazorpayOrderId() + "|" + response.getRazorpayPaymentId();
            /* System.out.println("Payload: " + payload);*/
             logger.debug("Payload: {}", payload);
 
 
             String actualSignature = response.getSignature();
 
-           /* String secret = "eBbfJ27F8g8SHL3bTueHVVG4";*/ // Use env variable in production
+           // Use env variable in production
             String generatedSignature = hmacSha256(payload, webhookSecret);
             /*System.out.println("Generated Signature: " + generatedSignature);*/
             logger.debug("Generated Signature: {}", generatedSignature);
@@ -226,60 +333,169 @@ public class PaymentService {
             // Payment status can be "created", "authorized", "captured", "failed"
             return payment.get("status");
         } catch (RazorpayException e) {
-            e.printStackTrace();
-            return "failed";
+            logger.error("Error fetching payment status for {}: {}", paymentId, e.getMessage(), e);
+            return "FAILED";
         }
     }
-
     public Payment finalizePayment(RazorpayResponse response) throws Exception {
         if (verifySignature(response)) {
             System.out.println("finalizePayment{} method is called");
             // Fetch full payment details from Razorpay
-            com.razorpay.Payment razorpayPayment = razorpayClient.payments.fetch(response.getPaymentId());
+            com.razorpay.Payment razorpayPayment = razorpayClient.payments.fetch(response.getRazorpayPaymentId());
             System.out.println();
             JSONObject upiObj = razorpayPayment.get("upi"); // returns a JSONObject
             String upiId = null;
-            if (upiObj != null&& upiObj.has("payer_account")) {
+            if (upiObj != null && upiObj.has("payer_account")) {
                 System.out.println(upiObj.get("upiId"));
                 upiId = upiObj.getString("payer_account");
             }
 
             String status = razorpayPayment.get("status"); // authorized, captured, failed
             System.out.println("Payment Status: " + status);
-            // Update local DB record
-            Payment payment = paymentRepository.findByOrderId(response.getOrderId());
-            if(payment==null){
-                throw new IllegalArgumentException("No payment found for orderId " + response.getOrderId());
+            System.out.println("Step 1");
+
+            //razorpay update
+            Payment payment = paymentRepository.findByRazorpayOrderId(response.getRazorpayOrderId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "No payment found for Razorpay orderId " + response.getRazorpayOrderId()));
+            payment.setRazorpayPaymentId(response.getRazorpayPaymentId()); // external Razorpay paymentId
+            payment.setPaymentId(response.getRazorpayPaymentId());
+            System.out.println("Step 2");
+            payment.setStatus(status);
+            System.out.println("Step 3");
+            System.out.println("Full Razorpay Payment = " + razorpayPayment);
+
+            System.out.println("Contact = " +
+                    razorpayPayment.get("contact"));
+
+            System.out.println("Email = " +
+                    razorpayPayment.get("email"));
+
+            System.out.println("Bank = " +
+                    razorpayPayment.get("bank"));
+
+            System.out.println("Created At = " +
+                    razorpayPayment.get("created_at"));
+            System.out.println("A-contact");
+            if (razorpayPayment.has("contact")) {
+                payment.setContact((String) razorpayPayment.get("contact"));
             }
-            System.out.println("After save: " + payment.getPaymentId());
+
+            System.out.println("B-email");
+            if (razorpayPayment.has("email")) {
+                payment.setEmail((String) razorpayPayment.get("email"));
+            }
+
+            System.out.println("C-bank");
+            //if (razorpayPayment.has("bank")) {
+               // payment.setBank((String) razorpayPayment.get("bank"));
+            ///}
+            Object bankObj = razorpayPayment.get("bank");
+
+            System.out.println("bankObj = " + bankObj);
+
+            if (bankObj != null &&
+                    bankObj != JSONObject.NULL) {
+
+                payment.setBank(bankObj.toString());
+            }
+
+            System.out.println("D-createdAt");
+            payment.setCreatedAt(LocalDateTime.now());
+
+            System.out.println("E-upi");
+            if (razorpayPayment.has("card")
+                    && razorpayPayment.get("card") != JSONObject.NULL) {
+
+                JSONObject card =
+                        (JSONObject) razorpayPayment.get("card");
+
+                payment.setCardDetails(
+                        "**** **** **** " +
+                                card.optString("last4", "")
+                );
+
+                payment.setCardNetwork(
+                        card.optString("network", "")
+                );
+
+                payment.setCardType(
+                        card.optString("type", "")
+                );
+
+                payment.setIssuer(
+                        card.optString("issuer", "")
+                );
+
+                payment.setCardSubType(
+                        card.optString("sub_type", "")
+                );
+            }
+                 System.out.println("Before payment save");
+            paymentRepository.save(payment);
 
 
-            payment.setPaymentId(response.getPaymentId());
-            System.out.println("Payment Id: " + payment.getPaymentId());
-            if(upiId!=null)
-            payment.setUpiId(upiId);
-            System.out.println("Payment UpiId: " + payment.getUpiId());
-            /*payment.setStatus(razorpayPayment.get("status"));*/ // authorized, captured, failed
-             payment.setStatus(status);
+// 🔑 Find existing order by Razorpay orderId
+            com.thoughtprocessing.model.Order order = orderRepository.findByRazorpayOrderId(response.getRazorpayOrderId())
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
 
-            System.out.println("Payment Status: " + payment.getStatus());
-            System.out.println("Before save: " + payment.getPaymentId());
-
-
-            // 🔑 Update order as well
-            com.thoughtprocessing.model.Order order = orderRepository.
-                    findById(response.getOrderId()) .orElseThrow(() ->
-                            new RuntimeException("Order not found"));
-            order.setOrderStatus(status.equals("captured") ? "PAID" : "PAYMENT_FAILED");
+            order.setOrderStatus("captured".equals(status) ? "PAID" : "PAYMENT_FAILED");
             order.setUpdatedAt(LocalDateTime.now());
             orderRepository.save(order);
+            if (response.getCustomerId() != null) {
+                System.out.println("CustomerId preserved: " + order.getCustomerId());
 
+                //order.setCustomerId(response.getCustomerId());
+            }
+            //order.setRazorpayOrderId(response.getOrderId()); // external Razorpay orderId
+            //order.setShippingAddressId(response.getShippingAddressId()); // from Order entity has join column with shipping address id so that we cant create it in Order class
+            // Preserve existing shipping address
+            if (order.getShippingAddress() != null) {
+                Long addressId = order.getShippingAddress().getId();
+                System.out.println("Shipping address id: " + addressId);
 
-            return paymentRepository.save(payment);
+                // Re‑attach the same entity so Hibernate keeps the FK
+                order.setShippingAddress(order.getShippingAddress());
+            }
+            /*if (response.getShippingAddressId() != null) {
+                ShippingAddressEntity address = new ShippingAddressEntity();
+                address.setId(response.getShippingAddressId());
+                order.setShippingAddress(address);
+            }*/
+           /* order.setRazorpayOrderId(response.getRazorpayOrderId());
+            order.setOrderStatus(status.equals("captured") ? "PAID" : "PAYMENT_FAILED");
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);*/
+            //order-history status cal
+            if ("captured".equals(status)) {
+                orderStatusUpdater.updateOrderStatus(order, "PLACED", "Order created by customer");
+            } else {
+                orderStatusUpdater.updateOrderStatus(order, "PAYMENT_FAILED", "Payment failed");
+            }
+            // Save history directly
+           /* OrderHistory history = new OrderHistory(
+                    order,
+                    status.equals("captured") ? "PLACED" : "PAYMENT_FAILED",
+                    LocalDateTime.now(),
+                    status.equals("captured") ? "Order created by customer" : "Payment failed"
+            );
+            historyRepository.save(history);*/
+            Payment savedPayment = paymentRepository.save(payment);
+
+            System.out.println("Saved Contact = " + savedPayment.getContact());
+            System.out.println("Saved Email = " + savedPayment.getEmail());
+            System.out.println("Saved Bank = " + savedPayment.getBank());
+            System.out.println("Saved PaymentId = " + savedPayment.getPaymentId());
+
+            return savedPayment;
+
+           // return paymentRepository.save(payment);
         } else {
             throw new Exception("Signature verification failed");
         }
     }
+
+
     public Payment saveCodPayment(Long amount) {
         System.out.println("Received COD payment request: Amount=" + amount);
         Payment payment = new Payment();
@@ -295,18 +511,49 @@ public class PaymentService {
 
     public Optional<OrderSuccessDTO> getOrderSuccDetls(String OrderId) {
         logger.info("getOrderSuccDetls: OrderId={}, PaymentId={},Amount={},Status={},Method={},UpiId={}");
-      /*  JSONObject paymentEntity = json.getJSONObject("payload")
+        System.out.println(
+                "getOrderSuccDetls called with orderId = "
+                        + OrderId
+        );
+        /*  JSONObject paymentEntity = json.getJSONObject("payload")
                 .getJSONObject("payment")
                 .getJSONObject("entity");
         JSONObject acquirerData = paymentEntity.getJSONObject("acquirer_data");*/
-        Payment payment = paymentRepository.findByOrderId(OrderId);
+        //Payment payment = paymentRepository.findByOrderId(OrderId);
+        Payment payment = paymentRepository.findByOrder_OrderId(OrderId);
+        System.out.println(
+                "Payment found = " + payment
+        );
         if (payment != null) {
+            System.out.println(
+                    "Payment Method = "
+                            + payment.getMethod()
+            );
             OrderSuccessDTO dto;
-            switch (payment.getMethod()) {
+            System.out.println("Payment Method = " + payment.getMethod());
+            System.out.println(
+                    "Payment Method = " + payment.getMethod()
+            );
+
+            System.out.println(
+                    "RazorpayOrderId = " + payment.getRazorpayOrderId()
+            );
+
+            System.out.println(
+                    "RazorpayPaymentId = " + payment.getRazorpayPaymentId()
+            );
+            System.out.println("PaymentId = " + payment.getPaymentId());
+            System.out.println("RazorpayPaymentId = " + payment.getRazorpayPaymentId());
+            System.out.println("Contact = " + payment.getContact());
+            System.out.println("Email = " + payment.getEmail());
+            System.out.println("CreatedAt = " + payment.getCreatedAt());
+            switch (payment.getMethod().toLowerCase()) {
                 case "upi":
             dto=new OrderSuccessDTO(
-                    payment.getOrderId(),
-                    payment.getPaymentId(),
+                    //payment.getOrderId(),
+                    payment.getOrder().getOrderId(),
+                    payment.getPaymentId(),payment.getRazorpayOrderId(),
+                    payment.getRazorpayPaymentId(),
                     payment.getAmount(),
                     payment.getMethod(),
                     payment.getUpiId(), payment.getStatus(),
@@ -319,8 +566,13 @@ public class PaymentService {
                     );
                     break;
                 case "card":
-                    dto = new OrderSuccessDTO( payment.getOrderId(),
-                            payment.getPaymentId(), payment.getAmount(),
+                    dto = new OrderSuccessDTO(
+                            //payment.getOrderId(),
+                            payment.getOrder().getOrderId(),
+                            payment.getPaymentId(),
+                            payment.getRazorpayOrderId(),
+                            payment.getRazorpayPaymentId(),
+                            payment.getAmount(),
                             payment.getMethod(), payment.getStatus(),
                             payment.getContact(), payment.getEmail(),
                             payment.getCreatedAt(), payment.getMerchant().getMerchantName(),
@@ -334,22 +586,38 @@ public class PaymentService {
                             payment.isEmiEligible()!=null? payment.isEmiEligible():false,
                             payment.isInternational()!=null? payment.isInternational():false,
                             payment.getEmiStatus() );
+                    System.out.println("Card with OrderSuccessDTO calling");
+                    System.out.println("DTO Contact = " + payment.getContact());
+                    System.out.println("DTO Email = " + payment.getEmail());
+                    System.out.println("DTO PaymentId = " + payment.getPaymentId());
+                    System.out.println("DTO RazorpayPaymentId = " + payment.getRazorpayPaymentId());
+                    System.out.println("DTO OrderId = " + payment.getOrder().getOrderId());
+                    System.out.println("DTO Status = " + payment.getStatus());
                     break;
                 case "netbanking":
                     dto = new OrderSuccessDTO(
-                            payment.getOrderId(),
+                           // payment.getOrderId(),
+                            payment.getOrder().getOrderId(),
                             payment.getPaymentId(),
+                            payment.getRazorpayOrderId(),
+                            payment.getRazorpayPaymentId(),
                             payment.getAmount(),
                             payment.getMethod(),
                             payment.getStatus(),
                             payment.getContact(),
                             payment.getEmail(),
-                            payment.getCreatedAt(),
+                            //payment.getCreatedAt(),
+                            payment.getOrder().getCreatedAt(),
                             payment.getMerchant().getMerchantName(),
                             payment.getMerchant().getMerchantBank(),
                             payment.getBank(),   // specific to netbanking
                             payment.getTransactionId()
                     );
+                    System.out.println("Netbanking with ordersuccessdto calling");
+                    System.out.println("DTO Contact = " + payment.getContact());
+                    System.out.println("DTO Email = " + payment.getEmail());
+                    System.out.println("DTO Bank = " + payment.getBank());
+                    System.out.println("DTO PaymentId = " + payment.getPaymentId());
                     break;
 
 
@@ -361,4 +629,6 @@ public class PaymentService {
         }
         return Optional.empty();
     }
+
+
 }

@@ -18,6 +18,9 @@ public class CourierWebhookController {
         this.orderService = orderService;
     }
     // Example: courier sends tracking updates
+    //integration point for external courier systems.
+    //Couriers POST tracking updates to /webhook.
+    //The controller maps the payload into an OrderHistoryDto and calls orderService.addHistoryEntry(...).
     @PostMapping("/webhook")
     public ResponseEntity<?> receiveCourierEvent(@Valid @RequestBody CourierEventPayloadDto payload) {
         try {

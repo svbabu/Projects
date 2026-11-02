@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication(scanBasePackages = {"com.thoughtprocessing"})
  @ComponentScan(basePackages = {"com.thoughtprocessing.security",
          "com.thoughtprocessing.controller","com.thoughtprocessing.service",
-         "com.thoughtprocessing.dto"
+         "com.thoughtprocessing.dto","com.thoughtprocessing.helper"
      })
 
 /*@SpringBootApplication*/

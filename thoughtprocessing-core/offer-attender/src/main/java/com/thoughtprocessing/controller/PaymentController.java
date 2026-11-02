@@ -52,6 +52,9 @@ public class PaymentController {
     @PostMapping("/netbanking")
     public ResponseEntity<Map<String, String>> startNetBankingPayment(@RequestBody NetBankingRequest request) {
         try {
+            System.out.println(
+                    "NETBANKING API CALLED: " + LocalDateTime.now()
+            );
             System.out.println("Received amount: " + request.getAmount());
             Long amountInRupees = request.getAmount();
             if (amountInRupees == null || amountInRupees <= 0) {
@@ -64,41 +67,49 @@ public class PaymentController {
             System.out.println("Received amount from after convert: " + amountInPaise);
 
             // Step 1: Save initial payment record
-            Payment saved = paymentService.savePaymentWithOrder(request.getBank(), Long.valueOf(amountInPaise));
+            System.out.println(
+                    "request.getOrderId() = " + request.getOrderId()
+            );
+            Payment saved = paymentService.savePaymentWithOrder(
+                    request.getOrderId(), // checkout order id
+                    request.getBank(),
+                    Long.valueOf(amountInPaise));
 
             // Step 2: Create Razorpay
             System.out.println("Received amount: " + amountInPaise);
-            String orderJson = paymentService.createOrder((int) amountInPaise);
-            System.out.println("Received amount: " + orderJson);
-            JSONObject orderObj = new JSONObject(orderJson);
-            String razorpayOrderId = orderObj.getString("id");
+
+            System.out.println(
+                    "Creating Razorpay order for amount "
+                            + amountInPaise
+            );
 
             // Step 3: Update payment record with orderId
             Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
                     .orElseThrow(() -> new RuntimeException("Merchant not found"));
             merchant.setMerchantName(merchant.getMerchantName());
             merchant.setMerchantBank(merchant.getMerchantBank());
-            com.thoughtprocessing.model.Order  order = orderRepository.findByOrderId(razorpayOrderId)
-                    .orElseGet(() -> {
-                        com.thoughtprocessing.model.Order newOrder = new com.thoughtprocessing.model.Order();
-                        newOrder.setOrderId(razorpayOrderId);
-                        newOrder.setOrderStatus("PENDING");
-                        newOrder.setTotalAmount((long) amountInPaise);
-                        newOrder.setAttempts(0); // ✅ initialize attempts
-                        return orderRepository.save(newOrder);
 
-                    });
-            saved.setMerchant(merchant);
-            saved.setOrder(order);
-
-           /* saved.setOrderId(razorpayOrderId);*/
-            paymentService.updatePayment(saved);
+            System.out.println(
+                    "PaymentId=" + saved.getId()
+                            + ", RazorpayOrderId=" + saved.getRazorpayOrderId()
+            );
 
             // Step 4: Build response for frontend
             Map<String, String> response = new HashMap<>();
-            response.put("paymentId", saved.getId().toString());
-            response.put("orderId", razorpayOrderId);
-            response.put("amount", String.valueOf(request.getAmount()));
+            response.put(
+                    "paymentId",
+                    saved.getId().toString()
+            );
+
+            response.put(
+                    "orderId",
+                    saved.getRazorpayOrderId()
+            );
+
+            response.put(
+                    "amount",
+                    String.valueOf(request.getAmount())
+            );
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -112,56 +123,80 @@ public class PaymentController {
     @PostMapping("/upi")
     public ResponseEntity<Map<String, String>> startUpiPayment(@RequestBody NetBankingRequest request) {
         try {
+            System.out.println(
+                    "UPI API CALLED: " + LocalDateTime.now()
+            );
+            System.out.println("Received amount: " + request.getAmount());
             Long amountInRupees = request.getAmount();
             if (amountInRupees == null || amountInRupees <= 0) {
                 throw new IllegalArgumentException("Amount must be greater than zero");
             }
             int amountInPaise = amountInRupees.intValue();
+            System.out.println("Received amount: " + amountInPaise);
+
+            System.out.println("Received amount from after convert: " + amountInPaise);
+
+            // Step 1: Save initial payment record
+            System.out.println(
+                    "request.getOrderId() = " + request.getOrderId()
+            );
+
             // Step 1: Save initial payment record for UPI
-            Payment saved = paymentService.saveUpiPayment(request.getUpiId(), Long.valueOf(amountInPaise));
+            Payment saved = paymentService.saveUpiPayment( request.getOrderId(), // checkout order id
+                     request.getUpiId(),
+                    Long.valueOf(amountInPaise));
+
+            // Step 2: Create Razorpay
+            System.out.println("Received amount: " + amountInPaise);
+
+            System.out.println(
+                    "Creating Razorpay order for amount "
+                            + amountInPaise
+            );
             // Step 2: Create Razorpay order
-            String orderJson = paymentService.createOrder(amountInPaise);
-            JSONObject orderObj = new JSONObject(orderJson);
-            String razorpayOrderId = orderObj.getString("id");
+           // String orderJson = paymentService.createOrder(amountInPaise);
+            //JSONObject orderObj = new JSONObject(orderJson);
+           // String razorpayOrderId = orderObj.getString("id");
             // Step 3: Update payment record with orderId
             // Create local Order entity and save it
+            //Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
+                   // .orElseThrow(() -> new RuntimeException("Merchant not found"));
+             //merchant.setMerchantName(merchant.getMerchantName());
+             //  merchant.setMerchantUpiId(merchant.getMerchantUpiId());
+               //merchant.setMerchantBank(merchant.getMerchantBank());
+            // Step 3: Update payment record with orderId
             Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
                     .orElseThrow(() -> new RuntimeException("Merchant not found"));
-             merchant.setMerchantName(merchant.getMerchantName());
-               merchant.setMerchantUpiId(merchant.getMerchantUpiId());
-               merchant.setMerchantBank(merchant.getMerchantBank());
-            com.thoughtprocessing.model.Order  order = orderRepository.findByOrderId(razorpayOrderId)
-                    .orElseGet(() -> {
-            com.thoughtprocessing.model.Order newOrder = new com.thoughtprocessing.model.Order();
-                        newOrder.setOrderId(razorpayOrderId);
-                        newOrder.setOrderStatus("PENDING");
-                        newOrder.setTotalAmount((long) amountInPaise);
-                        newOrder.setAttempts(0); // ✅ initialize attempts
-            return orderRepository.save(newOrder);
+            merchant.setMerchantName(merchant.getMerchantName());
+            merchant.setMerchantUpiId(merchant.getMerchantUpiId());
+            merchant.setMerchantBank(merchant.getMerchantBank());
 
-                    });
-            // ✅ Increment attempts for retry
-            order.setAttempts(order.getAttempts() + 1);
-            orderRepository.save(order);
-
-
-           /* saved.setOrderId(orderId);*/
-            saved.setMerchant(merchant);
-            saved.setOrder(order);    // attached Order relation to Payment
-            paymentService.updatePayment(saved);
+            System.out.println(
+                    "PaymentId=" + saved.getId()
+                            + ", RazorpayOrderId=" + saved.getRazorpayOrderId()
+            );
             // Step 4: Build response for frontend
             Map<String, String> response = new HashMap<>();
-            response.put("paymentId", saved.getId().toString());
-            response.put("orderId", razorpayOrderId);
-            response.put("amount", String.valueOf(request.getAmount()));
-            logger.info("Order {} and Payment {} saved successfully", order.getOrderId(), saved.getId());
+            response.put(
+                    "paymentId",
+                    saved.getId().toString()
+            );
+
+            response.put(
+                    "orderId",
+                    saved.getRazorpayOrderId()
+            );
+
+            response.put(
+                    "amount",
+                    String.valueOf(request.getAmount())
+            );
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create UPI order: " + e.getMessage());
-
+            error.put("error", "Failed to create order: " + e.getMessage());
             return ResponseEntity.status(500).body(error);
         }
     }
@@ -174,13 +209,27 @@ public class PaymentController {
                 throw new IllegalArgumentException("Amount must be greater than zero");
             }
             int amountInPaise = amountInRupees.intValue();
+            System.out.println("Received amount: " + amountInPaise);
+
+            System.out.println("Received amount from after convert: " + amountInPaise);
+
+            // Step 1: Save initial payment record
+            System.out.println(
+                    "request.getOrderId() = " + request.getOrderId()
+            );
+
 
             // Step 1: Save initial payment record for Card
-            Payment saved = paymentService.saveCardPayment(Long.valueOf(amountInPaise));
-            // Step 2: Create Razorpay order
-            String orderJson = paymentService.createOrder(amountInPaise);
-            JSONObject orderObj = new JSONObject(orderJson);
-            String razorpayOrderId = orderObj.getString("id");
+            Payment saved = paymentService.saveCardPayment(
+                    request.getOrderId(), // checkout order id
+                    Long.valueOf(amountInPaise));
+            // Step 2: Create Razorpay
+            System.out.println("Received amount: " + amountInPaise);
+
+            System.out.println(
+                    "Creating Razorpay order for amount "
+                            + amountInPaise
+            );
             // Step 3: Update payment record with orderId
             Merchant merchant = merchantRepository.findById(Long.valueOf(Integer.valueOf(101)))
                     .orElseThrow(() -> new RuntimeException("Merchant not found"));
@@ -188,64 +237,103 @@ public class PaymentController {
             merchant.setMerchantName(merchant.getMerchantName());
             merchant.setMerchantUpiId(merchant.getMerchantUpiId());
             merchant.setMerchantBank(merchant.getMerchantBank());
+            System.out.println(
+                    "PaymentId=" + saved.getId()
+                            + ", RazorpayOrderId=" + saved.getRazorpayOrderId()
+            );
 
-
-            com.thoughtprocessing.model.Order  order = orderRepository.findByOrderId(razorpayOrderId)
-                    .orElseGet(() -> {
-                                com.thoughtprocessing.model.Order newOrder = new com.thoughtprocessing.model.Order();
-                        newOrder.setOrderId(razorpayOrderId);
-                        newOrder.setOrderStatus("PENDING");
-                        newOrder.setTotalAmount((long) amountInPaise);
-                        newOrder.setAttempts(0); // ✅ initialize attempts
-                        return orderRepository.save(newOrder);
-
-                    });
-           /* saved.setOrderId(razorpayOrderId);*/
-            saved.setMerchant(merchant);
-            saved.setOrder(order);
-            paymentService.updatePayment(saved);
-            // Step 2: Build response for frontend
+            // Step 4: Build response for frontend
             Map<String, String> response = new HashMap<>();
-            response.put("dbpaymentId", saved.getId().toString());
-            response.put("orderId", razorpayOrderId);
-            response.put("amount", String.valueOf(request.getAmount()));
+            response.put(
+                    "paymentId",
+                    saved.getId().toString()
+            );
+
+            response.put(
+                    "orderId",
+                    saved.getRazorpayOrderId()
+            );
+
+            response.put(
+                    "amount",
+                    String.valueOf(request.getAmount())
+            );
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create Card order: " + e.getMessage());
+            error.put("error", "Failed to create order: " + e.getMessage());
             return ResponseEntity.status(500).body(error);
         }
     }
     @PostMapping("/verify")
     public ResponseEntity<Map> verifyPayment(@RequestBody RazorpayResponse response) {
-         if (response.getOrderId() == null) {
-             Payment payment = paymentRepository.findByPaymentId(response.getPaymentId());
-             if (payment != null) {
-                 response.setOrderId(payment.getOrderId());
-                 System.out.println("orderid"+payment.getOrderId());
-             }
-         }
-
-         if (response == null || response.getOrderId() == null || response.getPaymentId() == null)
+        if (response == null || response.getRazorpayOrderId() == null || response.getRazorpayPaymentId() == null)
          {
-             System.out.println("Invalid payload: orderId=" + response.getOrderId()
-                     + ", paymentId=" + response.getPaymentId()
+             System.out.println("Invalid payload: orderId=" + response.getRazorpayOrderId()
+                     + ", paymentId=" + response.getRazorpayPaymentId()
                      + ", signature=" + response.getSignature());
            /*  System.out.println("Invalid payload: " + response);*/
              return ResponseEntity.badRequest().body(Map.of( "status", "failed", "message", "Missing orderId or paymentId" ));
          }
+        // ✅ Always look up by razorpay_order_id
+        Payment payment = paymentRepository
+                .findByRazorpayOrderId(response.getRazorpayOrderId())
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for orderId=" + response.getRazorpayOrderId()));
+
+        // ✅ Update razorpay_payment_id here
+        payment.setRazorpayPaymentId(response.getRazorpayPaymentId());
+        payment.setStatus("COMPLETED");
+        paymentRepository.save(payment);
+        /*if (response.getOrderId() == null) {
+            //Payment payment = paymentRepository.findByPaymentId(response.getPaymentId());
+            Payment payment = paymentRepository.
+                    findByRazorpayPaymentId(
+                            response.getRazorpayPaymentId())
+                    .orElseThrow(()-> new IllegalArgumentException("Payment not found"));
+            response.setOrderId(payment.getOrderId());
+            System.out.println("orderid"+payment.getOrderId());
+
+             *//*if (payment != null) {
+                 response.setOrderId(payment.getOrderId());
+                 System.out.println("orderid"+payment.getOrderId());
+             }*//*
+            // ✅ Update razorpay_payment_id here
+            payment.setRazorpayPaymentId(response.getRazorpayPaymentId());
+        }*/
+        System.out.println("Before verifySignature");
          boolean isValid = paymentService.verifySignature(response);
+        System.out.println("After verifySignature");
+        System.out.println("isValid = " + isValid);
+        System.out.println(
+                "Signature Valid = "
+                        + isValid
+        );
          Map<String, String> result = new HashMap<>();
+
          if (!isValid) {
-             result.put("status", "failed"); result.put("message", "Invalid signature");
+             System.out.println(
+                     "RETURNING INVALID SIGNATURE"
+             );
+             result.put("status", "failed");
+             result.put("message", "Invalid signature");
              return ResponseEntity.badRequest().body(result); }
          // Delegate to finalizePayment so DB gets updated
-         try { Payment updated = paymentService.finalizePayment(response);
+         try {
+             System.out.println("Before finalizePayment");
+             System.out.println(
+                     "ABOUT TO CALL FINALIZE PAYMENT"
+             );
+             Payment updated = paymentService.finalizePayment(response);
+             System.out.println("After finalizePayment");
              result.put("status", updated.getStatus());
-             result.put("orderId", updated.getOrderId());
+             //result.put("orderId", updated.getOrderId());
+             result.put("orderId",updated.getOrder().getOrderId());
              result.put("paymentId", updated.getPaymentId());
+             result.put("razorpayOrderId", updated.getRazorpayOrderId());
+             result.put("razorpayPaymentId", updated.getRazorpayPaymentId());
+             System.out.println("Verify Response = " + result);
              return ResponseEntity.ok(result);
          } catch (Exception e) {
              return ResponseEntity.badRequest().body(Map.of("status","failed","message",e.getMessage()));
@@ -274,7 +362,8 @@ public class PaymentController {
                                      .getString("order_id");
 
         // Update your DB
-        Optional<Payment> optionalPayment = Optional.ofNullable(paymentRepository.findByOrderId(razorpayOrderId));
+        //Optional<Payment> optionalPayment = Optional.ofNullable(paymentRepository.findByOrderId(razorpayOrderId));
+        Optional<Payment> optionalPayment = Optional.ofNullable(paymentRepository.findByOrder_OrderId(razorpayOrderId));
 
         if (optionalPayment.isPresent()) {
             Payment payment = optionalPayment.get();
@@ -283,14 +372,22 @@ public class PaymentController {
                     .getJSONObject("payment")
                     .getJSONObject("entity");
             String razorpayPaymentId = paymentEntity.getString("id");
-            payment.setPaymentId(razorpayPaymentId);
+            payment.setPaymentId(razorpayPaymentId);//oldone only set paymentid from bakckend right
+            payment.setRazorpayPaymentId(razorpayPaymentId);//THis line missing call right
 
 
             // Fetch payment method (already present in payload)
             // Core fields
-            com.thoughtprocessing.model.Order order = orderRepository.findByOrderId(razorpayOrderId) .
+           /* com.thoughtprocessing.model.Order order = orderRepository.findByOrderId(razorpayOrderId) .
                     orElseThrow(() -> new RuntimeException("Order not found"));
-            String orderId = order.getOrderId();
+            String orderId = order.getOrderId();*/
+
+            // Look up by Razorpay external order ID
+            Order order = orderRepository.findByRazorpayOrderId(razorpayOrderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
+
+           /* Payment payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId)
+                    .orElseThrow(() -> new RuntimeException("Payment not found"));*/
             payment.setOrder(order);
 
 

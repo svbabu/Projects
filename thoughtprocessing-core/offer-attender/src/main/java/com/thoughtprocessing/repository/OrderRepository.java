@@ -16,8 +16,8 @@ public interface OrderRepository extends JpaRepository<Order, String>{
      // Example: find order by status
     Optional<Order> findByOrderStatus(String orderStatus);
 
-    Optional<Order> findByOrderId(String razorpayOrderId);
-
+    Optional<Order> findByOrderId(String orderId); // internal
+    Optional<Order> findByRazorpayOrderId(String razorpayOrderId); // external
 
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.items WHERE o.orderId = :orderId")
     List<Order> findOrderWithItems(@Param("orderId") String orderId);

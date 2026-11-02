@@ -10,6 +10,8 @@ public class OrderSuccessDTO {
      private String status; // PENDING, SUCCESS, FAILED
      private String orderId; // your system order reference
      private String paymentId; // Razorpay payment_id
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
      private String method; // upi, netbanking, card, wallet
      private String upiId; // optional, only for UPI
     // Enriched fields
@@ -38,7 +40,7 @@ public class OrderSuccessDTO {
     public OrderSuccessDTO()
     {}
     public OrderSuccessDTO(Long id, String bank, Long amount, String status,
-                           String orderId, String paymentId, String method,
+                           String orderId, String paymentId,String razorpayOrderId,String razorpayPaymentId, String method,
                            String upiId,String transactionId, String personName,
                            String companyName, String contact, String email,LocalDateTime createdAt,String rrn)
     {
@@ -48,6 +50,8 @@ public class OrderSuccessDTO {
         this.status = status;
         this.orderId = orderId;
         this.paymentId = paymentId;
+        this.razorpayOrderId = razorpayOrderId;
+        this.razorpayPaymentId = razorpayPaymentId;
         this.method = method;
         this.upiId = upiId;
         this.transactionId = transactionId;
@@ -62,9 +66,11 @@ public class OrderSuccessDTO {
     }
 
 
-    public OrderSuccessDTO(String orderId, String paymentId, Long amount, String method, String upiId, String status, String transactionId, String contact, String email, String rrn, LocalDateTime createdAt) {
+    public OrderSuccessDTO(String orderId, String paymentId,  String razorpayOrderId,  String razorpayPaymentId, Long amount, String method, String upiId, String status, String transactionId, String contact, String email, String rrn, LocalDateTime createdAt) {
         this.orderId = orderId;
         this.paymentId = paymentId;
+        this.razorpayOrderId = razorpayOrderId;
+        this.razorpayPaymentId = razorpayPaymentId;
         this.amount = amount;
         this.method = method;
         this.upiId = upiId;
@@ -78,9 +84,11 @@ public class OrderSuccessDTO {
 
     }
      //upi constrcucor with new
-    public OrderSuccessDTO(String orderId, String paymentId, Long amount, String method, String upiId, String status, String transactionId, String contact, String email, String rrn, LocalDateTime createdAt, String merchantName, String merchantUpiId, String merchantBank) {
+    public OrderSuccessDTO(String orderId, String paymentId,String razorpayOrderId,String razorpayPaymentId, Long amount, String method, String upiId, String status, String transactionId, String contact, String email, String rrn, LocalDateTime createdAt, String merchantName, String merchantUpiId, String merchantBank) {
         this.orderId = orderId;
         this.paymentId = paymentId;
+        this.razorpayOrderId=razorpayOrderId;
+        this.razorpayPaymentId=razorpayPaymentId;
         this.amount = amount;
         this.method = method;
         this.upiId = upiId;
@@ -97,13 +105,15 @@ public class OrderSuccessDTO {
     }
 
     //write card construcotor
-    public OrderSuccessDTO(String orderId, String paymentId, Long amount, String method,
+    public OrderSuccessDTO(String orderId, String paymentId,String razorpayOrderId,String razorpayPaymentId, Long amount, String method,
                            String status, String contact, String email, LocalDateTime createdAt,
                            String cardDetails, String cardNetwork, String cardType, String issuer,
                            String cardSubType, String authCode, boolean emiEligible,
                            boolean international, String emiStatus) {
         this.orderId = orderId;
         this.paymentId = paymentId;
+        this.razorpayOrderId = razorpayOrderId;
+        this.razorpayPaymentId = razorpayPaymentId;
         this.amount = amount;
         this.method = method;
         this.status = status;
@@ -121,13 +131,15 @@ public class OrderSuccessDTO {
         this.emiStatus = emiStatus;
     }
     //card  constructor impl
-    public OrderSuccessDTO(String orderId, String paymentId, Long amount, String method,
+    public OrderSuccessDTO(String orderId, String paymentId,String razorpayOrderId,String razorpayPaymentId,Long amount, String method,
                            String status, String contact, String email, LocalDateTime createdAt,
                            String merchantName,  String merchantBank,
                            String cardDetails, String cardNetwork, String cardType, String issuer,
                            String cardSubType, String authCode, boolean b, boolean b1, String emiStatus) {
     this.orderId = orderId;
     this.paymentId = paymentId;
+    this.razorpayOrderId = razorpayOrderId;
+    this.razorpayPaymentId = razorpayPaymentId;
     this.amount = amount;
     this.method = method;
     this.status = status;
@@ -147,9 +159,11 @@ public class OrderSuccessDTO {
     this.international = b1;
     }
 //netbanking constructor
-    public OrderSuccessDTO(String orderId, String paymentId, Long amount, String method, String status, String contact, String email, LocalDateTime createdAt, String merchantName, String merchantBank, String bank, String transactionId) {
+    public OrderSuccessDTO(String orderId, String paymentId,String razorpayOrderId,String razorpayPaymentId, Long amount, String method, String status, String contact, String email, LocalDateTime createdAt, String merchantName, String merchantBank, String bank, String transactionId) {
     this.orderId = orderId;
     this.paymentId = paymentId;
+    this.razorpayOrderId = razorpayOrderId;
+    this.razorpayPaymentId = razorpayPaymentId;
     this.amount = amount;
     this.method = method;
     this.status = status;

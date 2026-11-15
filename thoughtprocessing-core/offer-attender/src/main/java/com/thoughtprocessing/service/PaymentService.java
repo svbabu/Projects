@@ -199,6 +199,7 @@ public class PaymentService {
             payment.setMethod("upi");
             payment.setRazorpayOrderId(razorpayOrderId);
             payment.setMerchant(merchant);
+
             payment.setOrder(order);
         }
         paymentRepository.save(payment);
@@ -385,7 +386,19 @@ public class PaymentService {
             if (razorpayPayment.has("email")) {
                 payment.setEmail((String) razorpayPayment.get("email"));
             }
+            System.out.println("netbank or card -TransactionId");
+            if (razorpayPayment.has("acquirer_data")) {
 
+                JSONObject acquirerData =
+                        razorpayPayment.get("acquirer_data");
+
+                if (acquirerData.has("bank_transaction_id")) {
+
+                    payment.setTransactionId(
+                            acquirerData.getString("bank_transaction_id")
+                    );
+                }
+            }
             System.out.println("C-bank");
             //if (razorpayPayment.has("bank")) {
                // payment.setBank((String) razorpayPayment.get("bank"));
@@ -402,6 +415,7 @@ public class PaymentService {
 
             System.out.println("D-createdAt");
             payment.setCreatedAt(LocalDateTime.now());
+
 
             System.out.println("E-upi");
             if (razorpayPayment.has("card")
@@ -601,7 +615,7 @@ public class PaymentService {
                             payment.getPaymentId(),
                             payment.getRazorpayOrderId(),
                             payment.getRazorpayPaymentId(),
-                            payment.getAmount(),
+                            payment.getAmount()/100,
                             payment.getMethod(),
                             payment.getStatus(),
                             payment.getContact(),
@@ -618,6 +632,7 @@ public class PaymentService {
                     System.out.println("DTO Email = " + payment.getEmail());
                     System.out.println("DTO Bank = " + payment.getBank());
                     System.out.println("DTO PaymentId = " + payment.getPaymentId());
+                    System.out.println("DTO TransactionId = " + payment.getTransactionId());
                     break;
 
 

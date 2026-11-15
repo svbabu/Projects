@@ -58,54 +58,11 @@ public class CheckoutService {
     @Transactional
     public OrderResponseDTO createOrder(OrderRequestDTO request) throws Exception
     {
-        // Step 1: Call PaymentService based on payment method
-        //Payment payment;
-        //String method = request.getPayment().getMethod().toLowerCase();
-
-        /*switch (method) {
-            case "netbanking":
-                payment = paymentService.savePaymentWithOrder(
-                        request.getPayment().getBank(),
-                        request.getTotalAmount()
-                );
-                break;
-
-            case "upi":
-                payment = paymentService.saveUpiPayment(
-                        request.getPayment().getUpiId(),
-                        request.getTotalAmount()
-                );
-                break;
-
-            case "card":
-                payment = paymentService.saveCardPayment(
-                        request.getTotalAmount()
-                );
-                break;
-
-            case "cod":
-                payment = paymentService.saveCodPayment(
-                        request.getTotalAmount()
-                );
-                break;
-
-            default:
-                throw new IllegalArgumentException("Unsupported payment method: " + method);
-        }*/
-
-        // Step 2: Build Order entity with Razorpay ID (if applicable)
-        // Create local order only
 
         Order order = toOrder(request);
         // Generate internal order id if needed
         order.setOrderId(UUID.randomUUID().toString());
 
-       /* if (!"cod".equals(method)) {
-            String razorpayOrderId = payment.getOrder().getOrderId();
-            order.setOrderId(razorpayOrderId);
-        } else {
-            order.setOrderId(generateInternalOrderId()); // your own generator for COD
-        }*/
 
         // Step 3: Snapshot shipping address BEFORE saving order
 
@@ -118,36 +75,6 @@ public class CheckoutService {
                    ? shippingAddressService.cloneDefaultAddress(addrDto.getUserId())
                      : shippingAddressService.addShippingAddressEntity(addrDto);
 
-
-          /*  if (addrDto.isUseDefault()) {
-                snapshot = shippingAddressService.cloneDefaultAddress(addrDto.getUserId());
-            } else {
-                snapshot = shippingAddressService.addShippingAddressEntity(addrDto);
-            }*/
-
-            // Attach the snapshot entity to the order
-            //order.setShippingAddress(snapshot);
-        //}
-           // boolean useDefaultAddress = addrDto.isUseDefault();
-            //if (useDefaultAddress==true) {
-                //ShippingAddressEntity snapshot ;
-
-                /*ShippingAddressEntity   snapshot = addrDto.isUseDefault()*/
-               // ShippingAddressEntity   snapshot = useDefaultAddress
-                       // ? shippingAddressService.cloneDefaultAddress(addrDto.getUserId())
-                       // : shippingAddressService.addShippingAddressEntity(addrDto);
-
-            //order.setShippingAddress(snapshot);
-
-           /* if (addrDto.isUseDefault()) {
-                // Clone the default address into a new snapshot
-                snapshot = shippingAddressService.cloneDefaultAddress(addrDto.getUserId());
-                order.setShippingAddress(snapshot);
-            } else {
-                // Save a new address entity from the DTO
-                snapshot = shippingAddressService.addShippingAddressEntity(addrDto);
-                order.setShippingAddress(snapshot);
-            }*/
 
             // Attach the snapshot entity to the order
             order.setShippingAddress(snapshot);
@@ -196,141 +123,7 @@ public class CheckoutService {
         return "COD-" + datePart + "-" + randomPart;
     }
 
-    /*@Transactional
-    public OrderResponseDTO createOrder(OrderRequestDTO request) throws Exception {
-        // Step 1: Call PaymentService once to create Razorpay order + Payment
-        Payment payment = paymentService.savePaymentWithOrder(
-                request.getPayment().getBank(),
-                request.getTotalAmount()
-        );
-        String razorpayOrderId = payment.getOrder().getOrderId(); // reuse ID
 
-        // Step 2: Build Order entity with Razorpay ID
-        Order order = toOrder(request);
-        order.setOrderId(razorpayOrderId);
-
-
-        // Step 3: Snapshot shipping address BEFORE saving order
-        if (request.getShippingAddress() != null) {
-            ShippingAddressDto addrDto = request.getShippingAddress();
-            ShippingAddressEntity snapshot;
-
-            if (addrDto.isUseDefault()) {
-                // fetch existing default address for this user
-                ShippingAddressEntity defaultAddr = shippingAddressRepository.findDefaultByUserId(addrDto.getUserId())
-                        .orElseThrow(() -> new RuntimeException("Default address not found"));
-
-                // create a snapshot copy (new row)
-                snapshot = new ShippingAddressEntity();
-                snapshot.setUserId(defaultAddr.getUserId());
-                //snapshot.setRecipientName(defaultAddr.getRecipientName());
-                snapshot.setFullName(defaultAddr.getFullName());
-                snapshot.setMobileNumber(defaultAddr.getMobileNumber());
-                snapshot.setBuildingName(defaultAddr.getBuildingName());
-                snapshot.setStreetName(defaultAddr.getStreetName());
-
-                snapshot.setCity(defaultAddr.getCity());
-                snapshot.setState(defaultAddr.getState());
-                snapshot.setPincode(defaultAddr.getPincode());
-                snapshot.setLandmark(defaultAddr.getLandmark());
-                snapshot.setAddressType(defaultAddr.getAddressType());
-                snapshot.setUseDefault(false); // mark snapshot as non-default
-
-                snapshot = shippingAddressRepository.save(snapshot);
-
-
-
-            } else {
-                // snapshot new address from request payload
-
-                snapshot = toAddressEntity(addrDto);
-                snapshot = shippingAddressRepository.save(snapshot);
-            }
-
-            order.setShippingAddress(snapshot);
-        }
-
-
-        // Step 4: Attach items
-        *//*if (request.getItems() != null && !request.getItems().isEmpty()) {
-            for (OrderItemDTO dto : request.getItems()) {
-                boolean exists = orderItemRepository.existsByOrderIdAndProductId(order.getOrderId(), dto.getProductId());
-                if (!exists) {
-                    order.addItem(toItemEntity(dto, order));
-                }
-            }
-        }*//*
-
-        List<OrderItemEntity> existingItems = orderItemRepository.findByOrderOrderId(order.getOrderId());
-
-        if (existingItems.isEmpty()) {
-        if (request.getItems() != null) {
-            for (OrderItemDTO dto : request.getItems()) {
-                order.addItem(toItemEntity(dto, order));
-            }
-        }
-        }
-
-        // Step 5: Save order (cascade saves items + shipping)
-        Order savedOrder = orderRepository.save(order);
-
-        // Step 6: Re‑attach the existing Payment to the saved Order
-        payment.setOrder(savedOrder);
-        paymentRepository.save(payment);
-
-        // Step 7: Build response
-        OrderResponseDTO dto = toResponseDTO(savedOrder, payment);
-        dto.setRazorpayOrderId(razorpayOrderId);
-        return dto;
-    }
-*/
-    // Step 1: Convert DTO into OrderEntity
-        /*Order order = toOrder(request);
-        // Step 2: Snapshot shipping address into a new entity
-        if (request.getShippingAddress() != null) {
-            ShippingAddressEntity snapshot = new ShippingAddressEntity();
-            snapshot.setFullName(request.getShippingAddress().getFullName());
-            snapshot.setMobileNumber(request.getShippingAddress().getMobileNumber());
-            snapshot.setPincode(request.getShippingAddress().getPincode());
-            snapshot.setCity(request.getShippingAddress().getCity());
-            snapshot.setState(request.getShippingAddress().getState());
-            snapshot.setBuildingName(request.getShippingAddress().getBuildingName());
-            snapshot.setStreetName(request.getShippingAddress().getStreetName());
-            snapshot.setLandmark(request.getShippingAddress().getLandmark());
-            snapshot.setAddressType(request.getShippingAddress().getAddressType());
-            snapshot.setUseDefault(request.getShippingAddress().isUseDefault());
-
-            // Save snapshot and attach to order
-            ShippingAddressEntity savedAddress = shippingAddressRepository.save(snapshot);
-            order.setShippingAddress(savedAddress);
-        }
-
-
-
-
-        // Step 3: Save order entity (items + shipping)
-        Order savedOrder = orderRepository.save(order);
-        //OrderEntity savedOrder = orderEntityRepository.save(toOrderEntity(request));
-
-        // Step 4: Save payment entity (still tied to Order, not OrderEntity)
-        Payment payment = null;
-        if (request.getPayment() != null) {
-            payment = new Payment();
-            payment.setOrder(new Order(savedOrder.getOrderId())); // lightweight Order reference
-            payment.setAmount(request.getPayment().getAmount());
-            payment.setStatus(request.getPayment().getStatus());
-            payment.setMethod(request.getPayment().getMethod());
-            paymentRepository.save(payment);
-        }
-        // Step 5: Call Razorpay API
-        String razorpayOrderJson = paymentService.createOrder(savedOrder.getTotalAmount().intValue());
-        JSONObject razorpayOrder = new JSONObject(razorpayOrderJson);
-        String razorpayOrderId = razorpayOrder.getString("id");
-        // Step 6: Build response DTO
-        OrderResponseDTO dto = toResponseDTO(savedOrder, payment);
-        dto.setRazorpayOrderId(razorpayOrderId);
-        return dto;
-*/
    // }
 
     private OrderResponseDTO toResponseDTO(Order order, Payment payment) {
@@ -364,17 +157,7 @@ public class CheckoutService {
 
             dto.setAddress(sb.toString());
 
-          /*  dto.setAddress(addr.getFullName() + ", " +
-                    addr.getBuildingName() + ", " +
-                    addr.getStreetName() + ", " +
-                    addr.getCity() + ", " +
-                    addr.getState() + " - " +
-                    addr.getPincode());
-            dto.setRecipientName(addr.getFullName());
-            dto.setMobile(addr.getMobileNumber());*/
-            /*dto.setRecipientName(orderEntity.getShippingAddress().getFullName());
-            dto.setAddress(orderEntity.getShippingAddress().toString());
-            dto.setMobile(orderEntity.getShippingAddress().getMobileNumber());*/
+
         }
 
         // Payment summary + details
@@ -395,20 +178,20 @@ public class CheckoutService {
         order.setAttempts(0); // initialize attempts
 
         // ⚠️ Optional: attach items here, but safer to do it later in createOrder
-        /*if (request.getItems() != null) {
-            List<OrderItemEntity> existingItems = orderItemRepository. findByOrderOrderId(order.getOrderId());
-            if (existingItems.isEmpty()) {
-                for (OrderItemDTO dto : request.getItems()) {
-                    OrderItemEntity item = toItemEntity(dto, order);
-                    order.addItem(item); // ensures FK is consistent
-                }
-            }
-        }*/
+
 
         return order;
     }
 
     private OrderItemEntity toItemEntity(OrderItemDTO dto, Order order)  {
+        System.out.println(
+                "Model Name = " +
+                        dto.getModelName());
+
+        System.out.println(
+                "Image Url = " +
+                        dto.getImageUrl());
+
         OrderItemEntity entity = new OrderItemEntity();
         entity.setProductId(dto.getProductId());
         entity.setProductName(dto.getProductName());
@@ -430,11 +213,17 @@ public class CheckoutService {
 
 
     private OrderItemDTO toItemDTO(OrderItemEntity entity) {
+
         OrderItemDTO dto = new OrderItemDTO();
+
         dto.setProductId(entity.getProductId());
         dto.setProductName(entity.getProductName());
         dto.setModelName(entity.getModelName());
         dto.setDescription(entity.getDescription());
+        System.out.println(
+                "Order Item Image = " +
+                        dto.getImageUrl()
+        );
         dto.setImageUrl(entity.getImageUrl());
         dto.setQuantity(entity.getQuantity());
         dto.setPrice(entity.getAppliedPrice());
